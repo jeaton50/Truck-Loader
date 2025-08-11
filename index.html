@@ -55,7 +55,8 @@
   .smallnote{font-size:11px;color:#64748b;margin-top:8px}
   @media print{ body{background:#fff} .left,.tabs,.controls,.status,.legend{display:none!important} .right{box-shadow:none} .stats-card{box-shadow:none;border:0;margin:0} }
 
-  </style>
+  #legend { display: none; }
+</style>
 </head>
 <body>
 <div class="container">
@@ -97,6 +98,14 @@
 </div>
         </div>
 
+        <div class="row">
+          <label>Product Type</label>
+          <select id="productType" onchange="filterCaseProfiles()">
+            <option value="">-- Select Product --</option>
+            <option value="Absen">Absen</option>
+            <option value="Posters">Posters</option>
+          </select>
+        </div>
         <div class="row">
           <label>Case Type</label>
           <select id="caseProfile"></select>
@@ -572,7 +581,7 @@ const defaultColors = ['#3498db','#2ecc71','#e74c3c','#f39c12','#9b59b6','#1abc9
 
 // Data classes
 class TruckProfile{ constructor(name,length,width,height,maxWeight=0){ Object.assign(this,{name,length,width,height,maxWeight}); } }
-class CaseProfile{ constructor(name,side1,side2,height,weight=0,fragile=false,freestack=false,maxStack=2,color='#3498db'){ Object.assign(this,{name,side1,side2,height,weight,fragile,freestack,maxStack,color}); } }
+class CaseProfile{ constructor(name,side1,side2,height,weight=0,fragile=false,freestack=false,maxStack=2,color='#3498db',productType=''){ Object.assign(this,{name,side1,side2,height,weight,fragile,freestack,maxStack,color,productType}); } }
 class CaseLoad{ constructor(profile,quantity){ this.profile=profile; this.quantity=quantity; this.packedCount=0; } }
 class PackedCase{ constructor(x,y,z,width,length,height,layer,orientation,caseType,rotation=0,caseProfile=null,isFreestack=false){ Object.assign(this,{x,y,z,width,length,height,layer,orientation,caseType,rotation,caseProfile,isFreestack}); } }
 
@@ -584,54 +593,234 @@ function updateStatusBar(t){ document.getElementById('statusBar').textContent = 
 function saveProfiles(){ localStorage.setItem('truckProfiles', JSON.stringify(truckProfiles)); localStorage.setItem('caseProfiles', JSON.stringify(caseProfiles)); }
 function loadProfiles(){
   try{ const t=JSON.parse(localStorage.getItem('truckProfiles')||'null'); if(t){ truckProfiles = t.map(v=>new TruckProfile(v.name,+v.length,+v.width,+v.height,+v.maxWeight)); } }catch(e){}
-  try{ const c=JSON.parse(localStorage.getItem('caseProfiles')||'null'); if(c){ caseProfiles = c.map(v=>new CaseProfile(v.name,+v.side1,+v.side2,+v.height,+v.weight,!!v.fragile,!!v.freestack,+v.maxStack,v.color||'#3498db')); } }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem('caseProfiles')||'null'); if(c){ caseProfiles = c.map(v=>new CaseProfile(v.name,+v.side1,+v.side2,+v.height,+v.weight,!!v.fragile,!!v.freestack,+v.maxStack,v.color||'#3498db', v.productType||'')); } }catch(e){}
 }
+
 function createDefaultProfiles(){
   if(!truckProfiles.length){ truckProfiles=[
-    new TruckProfile("Small Van",120,60,60,2000),
-    new TruckProfile("16' Box Truck",192,90,84,4850),
-    new TruckProfile("26' Box Truck",312,96,96,26000),
-    new TruckProfile("53' Trailer",636,102,110,45000),
+     new TruckProfile("SPRINTER HIGH TOP",99,68,73,230),
+    new TruckProfile("10’ BOX TRUCK",108,76,73,250),
+    new TruckProfile("12’ BOX TRUCK",144,79,73,290),
+    new TruckProfile("14’ BOX TRUCK",168,86,77,400),
+    new TruckProfile("16’ BOX TRUCK",192,92,79,430),
+    new TruckProfile("20’ BOX TRUCK",235,93,86,570),
+    new TruckProfile("22’ BOX TRUCK",253,93,97,700),
+    new TruckProfile("24’ BOX TRUCK",288,93,97,800),
+    new TruckProfile("26’ BOX TRUCK",301,93,97,900),
+    new TruckProfile("53’ TRAILER",630,100,109,400),
   ]; }
-  if(!caseProfiles.length){ caseProfiles=[
-    new CaseProfile("Small Box",12,12,12,10,false,false,3,'#3498db'),
-    new CaseProfile("Medium Box",18,18,16,25,false,false,2,'#2ecc71'),
-    new CaseProfile("Large Box",24,20,20,40,false,false,2,'#e74c3c'),
-    new CaseProfile("Pallet",48,40,48,2000,false,false,1,'#f39c12'),
-    new CaseProfile("Long Box",36,12,12,30,false,false,3,'#9b59b6'),
-    new CaseProfile("Toolbox",18,12,8,15,false,true,4,'#e67e22'),
-    new CaseProfile("Briefcase",16,10,6,8,false,true,5,'#95a5a6'),
-    new CaseProfile("Poster Case",22,82,35,120,false,false,2,'#34495e'),
-    new CaseProfile("Free Case",18,13,7,12,false,true,3,'#d35400'),
-  ]; }
+
+  // Always recreate case profiles to ensure they have proper product types
+  caseProfiles = [
+    // Absen cases
+    new CaseProfile("Case, PL outrigger, 8x case",44,33,24,164,false,false,2,"#3498db","Absen"),
+    new CaseProfile("Case, Absen PL series 1M ladder, 6x case",48,24,25,150,false,false,2,"#2ecc71","Absen"),
+    new CaseProfile("Case, Absen PL2.5 Single header 1W 0.5m case",45,24,23,74,false,false,2,"#e74c3c","Absen"),
+    new CaseProfile("Case, Absen PL2.5 base stand GS road case 3",49,23,23,92,false,false,2,"#f39c12","Absen"),
+    new CaseProfile("Case, Absen PL2.5 clamps & platforms road case 5",44,23,25,95,false,false,2,"#9b59b6","Absen"),
+    new CaseProfile("Case, Absen PL2.5 outrigger GS road case 2",44,33,24,164,false,false,2,"#1abc9c","Absen"),
+    new CaseProfile("Case, Absen PL2.5 spare parts case",33,33,36,81,false,false,2,"#34495e","Absen"),
+    new CaseProfile("Case, Absen PL2.5, 8x",43,24,29,144,false,false,2,"#e67e22","Absen"),
+    new CaseProfile("Case, Absen PL2.5, header, 2W, 1m case",44,27,23,80,false,false,2,"#95a5a6","Absen"),
+    new CaseProfile("Case, Absen, PL series bar and platform",48,36,30,125,false,false,2,"#d35400","Absen"),
+    new CaseProfile("Case, Benson type, quadrant, 10X",24,18,12,4,false,false,2,"#60a5fa","Absen"),
+    new CaseProfile("Case, Benson type, quadrant, 5x",20,15,10,3,false,false,2,"#34d399","Absen"),
+    new CaseProfile("Case, Brompton Tessera S8",32,21,18,57,false,false,2,"#f472b6","Absen"),
+    new CaseProfile("Case, Brompton Tessera SX40 with XD10",32,21,18,57,false,false,2,"#fb7185","Absen"),
+    new CaseProfile("Case, Novastar MCTRL 660",24,20,9,15,false,false,2,"#facc15","Absen"),
+    new CaseProfile("Case, Novastar MCTRL4K",24,20,9,15,false,false,2,"#a78bfa","Absen"),
+    new CaseProfile("Case, Novastar MX40 Pro",32,22,16,54,false,false,2,"#14b8a6","Absen"),
+    new CaseProfile("Case, Novastar Mctrl R5",23,18,9,17,false,false,2,"#64748b","Absen"),
+    
+    
+    // Posters cases
+    new CaseProfile("Case, TRT poster, 2x",79.5,15.25,28.25,146.0,false,false,2,"#9b59b6","Posters"),
+    new CaseProfile("Case, TRT poster base, 2x",22.75,30.0,19.5,77.0,false,false,2,"#1abc9c","Posters"),
+    new CaseProfile("Case, Exovisual EP640 posters 2x",22.0,82.0,35.0,227.0,false,false,2,"#34495e","Posters"),
+    new CaseProfile("Case, Exovisual EP560 posters 2x",79.5,20.5,32.0,221.0,false,false,2,"#e67e22","Posters")
+  ];
+  
   saveProfiles();
 }
-function populateProfileDropdowns(){
-  const tSel=document.getElementById('truckProfile'); const cSel=document.getElementById('caseProfile');
-  tSel.innerHTML=''; cSel.innerHTML='';
-  truckProfiles.forEach(t=>{ const o=document.createElement('option'); o.value=t.name; o.textContent=t.name; tSel.appendChild(o); });
-  caseProfiles.forEach(c=>{ const o=document.createElement('option'); o.value=c.name; o.textContent=c.name; cSel.appendChild(o); });
-  if(truckProfiles.length){ tSel.selectedIndex=0; fillTruckDimensions(); }
-  if(caseProfiles.length){ cSel.selectedIndex=0; updateCaseInfo(); }
+
+function filterCaseProfiles(){
+  const selectedProduct = document.getElementById('productType').value;
+  const cSel = document.getElementById('caseProfile');
+  
+  debugLog(`Filtering cases for product: "${selectedProduct}"`);
+  debugLog(`Total case profiles available: ${caseProfiles.length}`);
+  
+  cSel.innerHTML = '';
+  
+  const filteredCases = selectedProduct
+    ? caseProfiles.filter(c => c.productType === selectedProduct)
+    : caseProfiles;
+    
+  debugLog(`Filtered cases found: ${filteredCases.length}`);
+  filteredCases.forEach((c, index) => {
+    debugLog(`  ${index + 1}. ${c.name} (${c.productType || 'no product type'})`);
+  });
+    
+  filteredCases.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.name;
+    o.textContent = c.name;
+    cSel.appendChild(o);
+  });
+  
+  if(filteredCases.length){
+    cSel.selectedIndex = 0;
+    updateCaseInfo();
+  } else {
+    debugLog('No cases found for selected product type');
+  }
+  
+  // Update legend to show only filtered cases
   renderLegend();
+}
+
+function populateProfileDropdowns(){
+  const tSel=document.getElementById('truckProfile'); 
+  
+  debugLog('Populating profile dropdowns...');
+  debugLog(`Available case profiles: ${caseProfiles.length}`);
+  
+  // Populate truck profiles
+  tSel.innerHTML='';
+  truckProfiles.forEach(t=>{ 
+    const o=document.createElement('option'); 
+    o.value=t.name; 
+    o.textContent=t.name; 
+    tSel.appendChild(o); 
+  });
+  
+  // Initial case profile population (will be filtered by product type)
+  filterCaseProfiles();
+  
+  if(truckProfiles.length){ 
+    tSel.selectedIndex=0; 
+    fillTruckDimensions(); 
+  }
 }
 
 // ===== UI wiring =====
-function fillTruckDimensions(){ const name=document.getElementById('truckProfile').value; const t=truckProfiles.find(v=>v.name===name); if(!t) return; ['Length','Width','Height'].forEach(k=>document.getElementById('truck'+k).value=t[k.toLowerCase()]); debugLog(`Selected truck: ${t.name}`); updateVisualization(); }
-function updateCaseInfo(){ const name=document.getElementById('caseProfile').value; const p=caseProfiles.find(v=>v.name===name); const info=document.getElementById('freestackInfo'); if(!p){info.textContent='';return;} if(p.freestack){ info.textContent=`📦 FREESTACK: Max Stack ${p.maxStack} | Placed above base`; info.style.color='#a855f7'; } else { info.textContent=`📦 STANDARD: Max Stack ${p.maxStack}`; info.style.color='#2563eb'; } }
-function renderLegend(){ const el=document.getElementById('legend'); el.innerHTML=''; caseProfiles.forEach(c=>{ const it=document.createElement('div'); const sw=document.createElement('span'); sw.className='sw'; sw.style.background=c.color; it.appendChild(sw); it.appendChild(document.createTextNode(c.name)); el.appendChild(it); }); }
+function fillTruckDimensions(){ 
+  const name=document.getElementById('truckProfile').value; 
+  const t=truckProfiles.find(v=>v.name===name); 
+  if(!t) return; 
+  ['Length','Width','Height'].forEach(k=>document.getElementById('truck'+k).value=t[k.toLowerCase()]); 
+  debugLog(`Selected truck: ${t.name}`); 
+  updateVisualization(); 
+}
+
+function updateCaseInfo(){ 
+  const name=document.getElementById('caseProfile').value; 
+  const p=caseProfiles.find(v=>v.name===name); 
+  const info=document.getElementById('freestackInfo'); 
+  if(!p){
+    info.textContent='';
+    return;
+  } 
+  if(p.freestack){ 
+    info.textContent=`📦 FREESTACK: Max Stack ${p.maxStack} | Placed above base`; 
+    info.style.color='#a855f7'; 
+  } else { 
+    info.textContent=`📦 STANDARD: Max Stack ${p.maxStack}`; 
+    info.style.color='#2563eb'; 
+  } 
+}
+
+function renderLegend(){ 
+  const el=document.getElementById('legend'); 
+  el.innerHTML=''; 
+  const selectedProduct = document.getElementById('productType').value;
+  const filteredCases = selectedProduct
+    ? caseProfiles.filter(c => c.productType === selectedProduct)
+    : caseProfiles;
+    
+  filteredCases.forEach(c=>{ 
+    const it=document.createElement('div'); 
+    const sw=document.createElement('span'); 
+    sw.className='sw'; 
+    sw.style.background=c.color; 
+    it.appendChild(sw); 
+    it.appendChild(document.createTextNode(c.name)); 
+    el.appendChild(it); 
+  }); 
+}
 
 // ===== Load list =====
-function updateCaseList(){ const list=document.getElementById('caseList'); list.innerHTML=''; let total=0,reg=0,free=0;
-  caseLoads.forEach((load,i)=>{ const div=document.createElement('div'); div.className='item'+(i===selectedCaseIndex?' selected':''); const badge=load.profile.freestack?' [FREESTACK]':''; const stack=` (Stack ${load.profile.maxStack})`; div.textContent=`${load.profile.name}: ${load.quantity} (${load.packedCount} packed)${stack}${badge}`; div.onclick=()=>{selectedCaseIndex=i; updateCaseList();}; list.appendChild(div); total+=load.quantity; if(load.profile.freestack) free+=load.quantity; else reg+=load.quantity; });
+function updateCaseList(){ 
+  const list=document.getElementById('caseList'); 
+  list.innerHTML=''; 
+  let total=0,reg=0,free=0;
+  caseLoads.forEach((load,i)=>{ 
+    const div=document.createElement('div'); 
+    div.className='item'+(i===selectedCaseIndex?' selected':''); 
+    const badge=load.profile.freestack?' [FREESTACK]':''; 
+    const stack=` (Stack ${load.profile.maxStack})`; 
+    div.textContent=`${load.profile.name}: ${load.quantity} (${load.packedCount} packed)${stack}${badge}`; 
+    div.onclick=()=>{selectedCaseIndex=i; updateCaseList();}; 
+    list.appendChild(div); 
+    total+=load.quantity; 
+    if(load.profile.freestack) free+=load.quantity; 
+    else reg+=load.quantity; 
+  });
   updateStatusBar(`Total: ${total} cases${free?` (${reg} regular, ${free} freestack)`:''}`);
   renderLegend();
 }
-function addCaseToLoad(){ const name=document.getElementById('caseProfile').value; const qty=+document.getElementById('caseQuantity').value; const p=caseProfiles.find(v=>v.name===name); if(!p||!(qty>0)) return alert('Select a case and valid quantity'); caseLoads.push(new CaseLoad(p,qty)); debugLog(`Added ${qty} × ${name}`); updateCaseList(); }
-function addTestLoad(){ caseLoads=[]; const poster=caseProfiles.find(p=>p.name==='Poster Case'); if(poster) caseLoads.push(new CaseLoad(poster,2)); const reg=caseProfiles.filter(p=>!p.freestack); if(reg[0]) caseLoads.push(new CaseLoad(reg[0],8)); if(reg[1]) caseLoads.push(new CaseLoad(reg[1],4)); const free=caseProfiles.filter(p=>p.freestack); const frc=caseProfiles.find(p=>p.name==='Free Case'); if(frc) caseLoads.push(new CaseLoad(frc,8)); if(free[0]) caseLoads.push(new CaseLoad(free[0],3)); updateCaseList(); debugLog('Added test load'); }
-function quickTest(){ caseLoads=[]; const poster=caseProfiles.find(p=>p.name==='Poster Case'); if(poster) caseLoads.push(new CaseLoad(poster,1)); const free=caseProfiles.filter(p=>p.freestack); if(free[0]) caseLoads.push(new CaseLoad(free[0],4)); updateCaseList(); packAndVisualize(); }
-function removeSelectedCase(){ if(selectedCaseIndex<0) return alert('Pick a line to remove'); const rm=caseLoads.splice(selectedCaseIndex,1)[0]; debugLog(`Removed ${rm.profile.name}`); selectedCaseIndex=-1; updateCaseList(); }
-function clearAllCases(){ caseLoads=[]; updateCaseList(); debugLog('Cleared load list'); }
+
+function addCaseToLoad(){ 
+  const name=document.getElementById('caseProfile').value; 
+  const qty=+document.getElementById('caseQuantity').value; 
+  const p=caseProfiles.find(v=>v.name===name); 
+  if(!p||!(qty>0)) return alert('Select a case and valid quantity'); 
+  caseLoads.push(new CaseLoad(p,qty)); 
+  debugLog(`Added ${qty} × ${name}`); 
+  updateCaseList(); 
+}
+
+function addTestLoad(){ 
+  caseLoads=[]; 
+  const selectedProduct = document.getElementById('productType').value;
+  const filteredCases = selectedProduct
+    ? caseProfiles.filter(c => c.productType === selectedProduct)
+    : caseProfiles;
+    
+  if(filteredCases.length >= 1) caseLoads.push(new CaseLoad(filteredCases[0], 8));
+  if(filteredCases.length >= 2) caseLoads.push(new CaseLoad(filteredCases[1], 4));
+  if(filteredCases.length >= 3) caseLoads.push(new CaseLoad(filteredCases[2], 3));
+  
+  updateCaseList(); 
+  debugLog('Added test load'); 
+}
+
+function quickTest(){ 
+  caseLoads=[]; 
+  const selectedProduct = document.getElementById('productType').value;
+  const filteredCases = selectedProduct
+    ? caseProfiles.filter(c => c.productType === selectedProduct)
+    : caseProfiles;
+    
+  if(filteredCases.length >= 1) caseLoads.push(new CaseLoad(filteredCases[0], 5));
+  
+  updateCaseList(); 
+  packAndVisualize(); 
+}
+
+function removeSelectedCase(){ 
+  if(selectedCaseIndex<0) return alert('Pick a line to remove'); 
+  const rm=caseLoads.splice(selectedCaseIndex,1)[0]; 
+  debugLog(`Removed ${rm.profile.name}`); 
+  selectedCaseIndex=-1; 
+  updateCaseList(); 
+}
+
+function clearAllCases(){ 
+  caseLoads=[]; 
+  updateCaseList(); 
+  debugLog('Cleared load list'); 
+}
 
 // ===== Math helpers (ported from Python) =====
 const EPS=1e-6;
@@ -1136,7 +1325,7 @@ function resetZoom(){ const z=document.getElementById('zoomSlider'); z.value=1.0
 function updateStatistics(){ const el=document.getElementById('statisticsContent'); if(!currentPacking.length){ el.textContent='No data'; return; }
   const L=+document.getElementById('truckLength').value, W=+document.getElementById('truckWidth').value, H=+document.getElementById('truckHeight').value; const truckVol=L*W*H; const req=caseLoads.reduce((s,l)=>s+l.quantity,0); const tot=currentPacking.length; let packedVol=0, weight=0; currentPacking.forEach(c=>{ packedVol += c.width*c.length*c.height; if(c.caseProfile) weight += c.caseProfile.weight; }); const util=truckVol? (packedVol/truckVol*100):0; const byType={}; currentPacking.forEach(c=>{ byType[c.caseType]=(byType[c.caseType]||0)+1; });
   const lines=['PACKING STATISTICS','==========================================','',`Truck: ${document.getElementById('truckProfile').value}`,`Dims: ${L}L × ${W}W × ${H}H`,`Volume: ${truckVol.toLocaleString()} in³`,'','SUMMARY','------------------------------------------',`Requested: ${req} cases`,`Packed:    ${tot} cases (${req? (tot/req*100).toFixed(1):'0.0'}%)`,'',`Utilization: ${util.toFixed(1)}%`,`Used Volume: ${packedVol.toLocaleString()} in³`,`Empty Vol.: ${(truckVol-packedVol).toLocaleString()} in³`,`Total Weight: ${weight.toLocaleString()} lbs`,'','Per Type:',...Object.entries(byType).map(([k,v])=>`  - ${k}: ${v}`)];
-  el.textContent = lines.join('\\n');
+  el.textContent = lines.join('\n');
 }
 function exportReport(){ updateStatistics(); const txt=document.getElementById('statisticsContent').textContent; const blob=new Blob([txt],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='truck_packing_report.txt'; a.click(); URL.revokeObjectURL(a.href); debugLog('Report exported'); }
 function exportVisualization(){ const c=document.getElementById('visualizationCanvas'); const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='truck_visualization.png'; a.click(); debugLog('PNG exported'); }
@@ -1151,17 +1340,152 @@ function switchTab(name){ document.querySelectorAll('.tab').forEach(t=>t.classLi
 // ===== Modal CRUD (minimal) =====
 let modalHandler=null;
 function showModal(title,html,onSave){ const m=document.createElement('div'); m.className='modal'; m.id='modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);display:block;z-index:1000'; m.innerHTML=`<div style="width:min(520px,92vw);max-height:86vh;overflow:auto;background:#fff;margin:6vh auto;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.2)"><div style="padding:12px 14px;border-bottom:1px solid #e5e7eb;font-weight:700">${title}</div><div id="modalBody" style="padding:12px 14px">${html}</div><div style="display:flex;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid #e5e7eb"><button class="btn secondary" id="cancelBtn">Cancel</button><button class="btn primary" id="saveBtn">Save</button></div></div>`; document.body.appendChild(m); document.getElementById('cancelBtn').onclick=()=>m.remove(); document.getElementById('saveBtn').onclick=()=>{ onSave&&onSave(); m.remove(); }; }
-function newTruckDialog(){ const html=`<div class='row'><label>Name</label><input id='t_name'></div><div class='row'><label>Length</label><input id='t_len' type='number'></div><div class='row'><label>Width</label><input id='t_wid' type='number'></div><div class='row'><label>Height</label><input id='t_hei' type='number'></div><div class='row'><label>Max Weight</label><input id='t_wgt' type='number'></div>`; showModal('New Truck',html,()=>{ const name=document.getElementById('t_name').value.trim(); const L=+document.getElementById('t_len').value, W=+document.getElementById('t_wid').value, H=+document.getElementById('t_hei').value, MW=+document.getElementById('t_wgt').value||0; if(!name||!(L>0&&W>0&&H>0)) return alert('Fill all fields'); truckProfiles.push(new TruckProfile(name,L,W,H,MW)); saveProfiles(); populateProfileDropdowns(); debugLog('Truck added: '+name); }); }
-function editTruckDialog(){ const sel=document.getElementById('truckProfile').value; const t=truckProfiles.find(v=>v.name===sel); if(!t) return alert('Pick a truck'); const html=`<div class='row'><label>Name</label><input id='t_name' value='${t.name}'></div><div class='row'><label>Length</label><input id='t_len' type='number' value='${t.length}'></div><div class='row'><label>Width</label><input id='t_wid' type='number' value='${t.width}'></div><div class='row'><label>Height</label><input id='t_hei' type='number' value='${t.height}'></div><div class='row'><label>Max Weight</label><input id='t_wgt' type='number' value='${t.maxWeight||0}'></div>`; showModal('Edit Truck',html,()=>{ const L=+document.getElementById('t_len').value, W=+document.getElementById('t_wid').value, H=+document.getElementById('t_hei').value, MW=+document.getElementById('t_wgt').value||0; if(!(L>0&&W>0&&H>0)) return alert('Fill all fields'); Object.assign(t,{length:L,width:W,height:H,maxWeight:MW}); saveProfiles(); populateProfileDropdowns(); document.getElementById('truckProfile').value=t.name; fillTruckDimensions(); debugLog('Truck updated: '+t.name); }); }
-function deleteTruckProfile(){ const sel=document.getElementById('truckProfile').value; if(!sel) return; if(!confirm(`Delete truck profile "${sel}"?`)) return; const i=truckProfiles.findIndex(v=>v.name===sel); if(i>=0){ truckProfiles.splice(i,1); saveProfiles(); populateProfileDropdowns(); debugLog('Truck deleted: '+sel); } }
-function colorChipsHTML(sel){ const colors=[...defaultColors,'#60a5fa','#34d399','#f472b6','#fb7185','#facc15','#a78bfa','#14b8a6','#64748b']; return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${colors.map(c=>`<div class="sw" data-color="${c}" style="width:28px;height:28px;border:2px solid #e5e7eb;border-radius:6px;cursor:pointer;background:${c};${c===sel?'box-shadow:0 0 0 2px rgba(37,99,235,.25)':''}"></div>`).join('')}</div>`; }
-function hookColorGrid(containerId,inputId){ const grid=document.querySelector(`#${containerId} .sw`).parentElement; grid.querySelectorAll('.sw').forEach(el=>{ el.onclick=()=>{ grid.querySelectorAll('.sw').forEach(n=>n.style.boxShadow=''); el.style.boxShadow='0 0 0 2px rgba(37,99,235,.25)'; document.getElementById(inputId).value = el.dataset.color; }; }); }
-function newCaseDialog(){ const html=`<div class='row'><label>Name</label><input id='c_name'></div><div class='row'><label>Side 1 (L)</label><input id='c_s1' type='number'></div><div class='row'><label>Side 2 (W)</label><input id='c_s2' type='number'></div><div class='row'><label>Height</label><input id='c_h' type='number'></div><div class='row'><label>Weight</label><input id='c_w' type='number'></div><div class='row'><label>Max Stack</label><input id='c_ms' type='number' value='2'></div><div class='row'><label><input id='c_fs' type='checkbox'> Freestack</label></div><div class='row'><label>Color</label><input id='c_color' value='#3498db'>${colorChipsHTML('#3498db')}</div>`; showModal('New Case',html,()=>{ const name=document.getElementById('c_name').value.trim(); const s1=+document.getElementById('c_s1').value, s2=+document.getElementById('c_s2').value, h=+document.getElementById('c_h').value; const w=+document.getElementById('c_w').value||0; const ms=+document.getElementById('c_ms').value||1; const fs=document.getElementById('c_fs').checked; const color=document.getElementById('c_color').value||'#3498db'; if(!name||!(s1>0&&s2>0&&h>0)) return alert('Fill all fields'); caseProfiles.push(new CaseProfile(name,s1,s2,h,w,false,fs,ms,color)); saveProfiles(); populateProfileDropdowns(); document.getElementById('caseProfile').value=name; updateCaseInfo(); debugLog('Case added: '+name); }); setTimeout(()=>hookColorGrid('modalBody','c_color'),0); }
-function editCaseDialog(){ const sel=document.getElementById('caseProfile').value; const p=caseProfiles.find(v=>v.name===sel); if(!p) return alert('Pick a case'); const html=`<div class='row'><label>Name</label><input id='c_name' value='${p.name}' disabled></div><div class='row'><label>Side 1 (L)</label><input id='c_s1' type='number' value='${p.side1}'></div><div class='row'><label>Side 2 (W)</label><input id='c_s2' type='number' value='${p.side2}'></div><div class='row'><label>Height</label><input id='c_h' type='number' value='${p.height}'></div><div class='row'><label>Weight</label><input id='c_w' type='number' value='${p.weight||0}'></div><div class='row'><label>Max Stack</label><input id='c_ms' type='number' value='${p.maxStack||1}'></div><div class='row'><label><input id='c_fs' type='checkbox' ${p.freestack?'checked':''}> Freestack</label></div><div class='row'><label>Color</label><input id='c_color' value='${p.color||'#3498db'}'>${colorChipsHTML(p.color||'#3498db')}</div>`; showModal('Edit Case',html,()=>{ const s1=+document.getElementById('c_s1').value, s2=+document.getElementById('c_s2').value, h=+document.getElementById('c_h').value; const w=+document.getElementById('c_w').value||0; const ms=+document.getElementById('c_ms').value||1; const fs=document.getElementById('c_fs').checked; const color=document.getElementById('c_color').value||'#3498db'; if(!(s1>0&&s2>0&&h>0)) return alert('Fill all fields'); Object.assign(p,{side1:s1,side2:s2,height:h,weight:w,maxStack:ms,freestack:fs,color}); saveProfiles(); populateProfileDropdowns(); document.getElementById('caseProfile').value=p.name; updateCaseInfo(); debugLog('Case updated: '+p.name); }); setTimeout(()=>hookColorGrid('modalBody','c_color'),0); }
-function deleteCaseProfile(){ const sel=document.getElementById('caseProfile').value; if(!sel) return; if(!confirm(`Delete case profile "${sel}"?`)) return; const i=caseProfiles.findIndex(v=>v.name===sel); if(i>=0){ caseProfiles.splice(i,1); saveProfiles(); populateProfileDropdowns(); debugLog('Case deleted: '+sel); } }
+
+function newTruckDialog(){ 
+  const html=`<div class='row'><label>Name</label><input id='t_name'></div><div class='row'><label>Length</label><input id='t_len' type='number'></div><div class='row'><label>Width</label><input id='t_wid' type='number'></div><div class='row'><label>Height</label><input id='t_hei' type='number'></div><div class='row'><label>Max Weight</label><input id='t_wgt' type='number'></div>`; 
+  showModal('New Truck',html,()=>{ 
+    const name=document.getElementById('t_name').value.trim(); 
+    const L=+document.getElementById('t_len').value, W=+document.getElementById('t_wid').value, H=+document.getElementById('t_hei').value, MW=+document.getElementById('t_wgt').value||0; 
+    if(!name||!(L>0&&W>0&&H>0)) return alert('Fill all fields'); 
+    truckProfiles.push(new TruckProfile(name,L,W,H,MW)); 
+    saveProfiles(); populateProfileDropdowns(); 
+    debugLog('Truck added: '+name); 
+  }); 
+}
+
+function editTruckDialog(){ 
+  const sel=document.getElementById('truckProfile').value; 
+  const t=truckProfiles.find(v=>v.name===sel); 
+  if(!t) return alert('Pick a truck'); 
+  const html=`<div class='row'><label>Name</label><input id='t_name' value='${t.name}'></div><div class='row'><label>Length</label><input id='t_len' type='number' value='${t.length}'></div><div class='row'><label>Width</label><input id='t_wid' type='number' value='${t.width}'></div><div class='row'><label>Height</label><input id='t_hei' type='number' value='${t.height}'></div><div class='row'><label>Max Weight</label><input id='t_wgt' type='number' value='${t.maxWeight||0}'></div>`; 
+  showModal('Edit Truck',html,()=>{ 
+    const L=+document.getElementById('t_len').value, W=+document.getElementById('t_wid').value, H=+document.getElementById('t_hei').value, MW=+document.getElementById('t_wgt').value||0; 
+    if(!(L>0&&W>0&&H>0)) return alert('Fill all fields'); 
+    Object.assign(t,{length:L,width:W,height:H,maxWeight:MW}); 
+    saveProfiles(); populateProfileDropdowns(); 
+    document.getElementById('truckProfile').value=t.name; 
+    fillTruckDimensions(); 
+    debugLog('Truck updated: '+t.name); 
+  }); 
+}
+
+function deleteTruckProfile(){ 
+  const sel=document.getElementById('truckProfile').value; 
+  if(!sel) return; 
+  if(!confirm(`Delete truck profile "${sel}"?`)) return; 
+  const i=truckProfiles.findIndex(v=>v.name===sel); 
+  if(i>=0){ 
+    truckProfiles.splice(i,1); 
+    saveProfiles(); 
+    populateProfileDropdowns(); 
+    debugLog('Truck deleted: '+sel); 
+  } 
+}
+
+function colorChipsHTML(sel){ 
+  const colors=[...defaultColors,'#60a5fa','#34d399','#f472b6','#fb7185','#facc15','#a78bfa','#14b8a6','#64748b']; 
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${colors.map(c=>`<div class="sw" data-color="${c}" style="width:28px;height:28px;border:2px solid #e5e7eb;border-radius:6px;cursor:pointer;background:${c};${c===sel?'box-shadow:0 0 0 2px rgba(37,99,235,.25)':''}"></div>`).join('')}</div>`; 
+}
+
+function hookColorGrid(containerId,inputId){ 
+  const grid=document.querySelector(`#${containerId} .sw`).parentElement; 
+  grid.querySelectorAll('.sw').forEach(el=>{ 
+    el.onclick=()=>{ 
+      grid.querySelectorAll('.sw').forEach(n=>n.style.boxShadow=''); 
+      el.style.boxShadow='0 0 0 2px rgba(37,99,235,.25)'; 
+      document.getElementById(inputId).value = el.dataset.color; 
+    }; 
+  }); 
+}
+
+function newCaseDialog(){ 
+  const html=`<div class='row'><label>Name</label><input id='c_name'></div><div class='row'><label>Product Type</label><select id='c_product'><option value="">General</option><option value="Absen">Absen</option><option value="Posters">Posters</option></select></div><div class='row'><label>Side 1 (L)</label><input id='c_s1' type='number'></div><div class='row'><label>Side 2 (W)</label><input id='c_s2' type='number'></div><div class='row'><label>Height</label><input id='c_h' type='number'></div><div class='row'><label>Weight</label><input id='c_w' type='number'></div><div class='row'><label>Max Stack</label><input id='c_ms' type='number' value='2'></div><div class='row'><label><input id='c_fs' type='checkbox'> Freestack</label></div><div class='row'><label>Color</label><input id='c_color' value='#3498db'>${colorChipsHTML('#3498db')}</div>`; 
+  showModal('New Case',html,()=>{ 
+    const name=document.getElementById('c_name').value.trim(); 
+    const productType=document.getElementById('c_product').value; 
+    const s1=+document.getElementById('c_s1').value, s2=+document.getElementById('c_s2').value, h=+document.getElementById('c_h').value; 
+    const w=+document.getElementById('c_w').value||0; 
+    const ms=+document.getElementById('c_ms').value||1; 
+    const fs=document.getElementById('c_fs').checked; 
+    const color=document.getElementById('c_color').value||'#3498db'; 
+    if(!name||!(s1>0&&s2>0&&h>0)) return alert('Fill all fields'); 
+    caseProfiles.push(new CaseProfile(name,s1,s2,h,w,false,fs,ms,color,productType)); 
+    saveProfiles(); 
+    populateProfileDropdowns(); 
+    document.getElementById('caseProfile').value=name; 
+    updateCaseInfo(); 
+    debugLog('Case added: '+name); 
+  }); 
+  setTimeout(()=>hookColorGrid('modalBody','c_color'),0); 
+}
+
+function editCaseDialog(){ 
+  const sel=document.getElementById('caseProfile').value; 
+  const p=caseProfiles.find(v=>v.name===sel); 
+  if(!p) return alert('Pick a case'); 
+  const html=`<div class='row'><label>Name</label><input id='c_name' value='${p.name}' disabled></div><div class='row'><label>Product Type</label><select id='c_product'><option value="">General</option><option value="Absen" ${p.productType==='Absen'?'selected':''}>Absen</option><option value="Posters" ${p.productType==='Posters'?'selected':''}>Posters</option></select></div><div class='row'><label>Side 1 (L)</label><input id='c_s1' type='number' value='${p.side1}'></div><div class='row'><label>Side 2 (W)</label><input id='c_s2' type='number' value='${p.side2}'></div><div class='row'><label>Height</label><input id='c_h' type='number' value='${p.height}'></div><div class='row'><label>Weight</label><input id='c_w' type='number' value='${p.weight||0}'></div><div class='row'><label>Max Stack</label><input id='c_ms' type='number' value='${p.maxStack||1}'></div><div class='row'><label><input id='c_fs' type='checkbox' ${p.freestack?'checked':''}> Freestack</label></div><div class='row'><label>Color</label><input id='c_color' value='${p.color||'#3498db'}'>${colorChipsHTML(p.color||'#3498db')}</div>`; 
+  showModal('Edit Case',html,()=>{ 
+    const productType=document.getElementById('c_product').value; 
+    const s1=+document.getElementById('c_s1').value, s2=+document.getElementById('c_s2').value, h=+document.getElementById('c_h').value; 
+    const w=+document.getElementById('c_w').value||0; 
+    const ms=+document.getElementById('c_ms').value||1; 
+    const fs=document.getElementById('c_fs').checked; 
+    const color=document.getElementById('c_color').value||'#3498db'; 
+    if(!(s1>0&&s2>0&&h>0)) return alert('Fill all fields'); 
+    Object.assign(p,{side1:s1,side2:s2,height:h,weight:w,maxStack:ms,freestack:fs,color,productType}); 
+    saveProfiles(); 
+    populateProfileDropdowns(); 
+    document.getElementById('caseProfile').value=p.name; 
+    updateCaseInfo(); 
+    debugLog('Case updated: '+p.name); 
+  }); 
+  setTimeout(()=>hookColorGrid('modalBody','c_color'),0); 
+}
+
+function deleteCaseProfile(){ 
+  const sel=document.getElementById('caseProfile').value; 
+  if(!sel) return; 
+  if(!confirm(`Delete case profile "${sel}"?`)) return; 
+  const i=caseProfiles.findIndex(v=>v.name===sel); 
+  if(i>=0){ 
+    caseProfiles.splice(i,1); 
+    saveProfiles(); 
+    populateProfileDropdowns(); 
+    debugLog('Case deleted: '+sel); 
+  } 
+}
 
 // ===== Init =====
-function initApp(){ debugLog('Truck Loader (JS port) ready'); loadProfiles(); createDefaultProfiles(); populateProfileDropdowns(); document.getElementById('truckProfile').addEventListener('change', fillTruckDimensions); document.getElementById('caseProfile').addEventListener('change', updateCaseInfo); document.querySelectorAll('input[name="view"]').forEach(r=> r.addEventListener('change',(e)=>{ document.getElementById('3dControls').style.display = e.target.value==='3d' ? 'inline-block' : 'none'; updateVisualization(); })); setupCanvas(); debugLog(`Loaded ${truckProfiles.length} truck profiles`); debugLog(`Loaded ${caseProfiles.length} case profiles`); debugLog("TIP: 'Auto-Grid' for dense single-type; 'Smart' uses frontier; 'Grid' scans with step size."); }
+function initApp(){ 
+  debugLog('Truck Loader (JS port) ready'); 
+  debugLog('Loading profiles from storage...');
+  loadProfiles(); 
+  debugLog('Creating default profiles...');
+  createDefaultProfiles(); 
+  debugLog('Populating dropdowns...');
+  populateProfileDropdowns(); 
+  
+  // Wire up event handlers
+  document.getElementById('truckProfile').addEventListener('change', fillTruckDimensions); 
+  document.getElementById('caseProfile').addEventListener('change', updateCaseInfo); 
+  document.getElementById('productType').addEventListener('change', filterCaseProfiles);
+  
+  document.querySelectorAll('input[name="view"]').forEach(r=> r.addEventListener('change',(e)=>{ 
+    document.getElementById('3dControls').style.display = e.target.value==='3d' ? 'inline-block' : 'none'; 
+    updateVisualization(); 
+  })); 
+  
+  setupCanvas(); 
+  debugLog(`Loaded ${truckProfiles.length} truck profiles`); 
+  debugLog(`Loaded ${caseProfiles.length} case profiles`); 
+  
+  // Debug: List all case profiles with their product types
+  caseProfiles.forEach((c, index) => {
+    debugLog(`Case ${index + 1}: ${c.name} - Product: ${c.productType || 'none'}`);
+  });
+  
+  debugLog("TIP: 'Auto-Grid' for dense single-type; 'Smart' uses frontier; 'Grid' scans with step size."); 
+}
 window.addEventListener('load', initApp);
 
 // animation loop for free camera
@@ -1242,7 +1566,7 @@ function renderStatisticsCard(){
     '',
     'Per Type:',
     ...Array.from(byType.entries()).map(([name,v])=>`  - ${name}: ${v.packed}/${v.requested} (${v.requested? (v.packed/v.requested*100).toFixed(1):'0.0'}%)`)
-  ].join('\\n');
+  ].join('\n');
 }
 
 function printStatsCard(){
@@ -1262,7 +1586,117 @@ function exportStatsText(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='packing_statistics.txt'; a.click(); URL.revokeObjectURL(a.href);
 }
 
+
+
 </script>
+<script>
+// --- DROP-IN FIX (put this near the end of the file, before </body>) ---
+
+// Guard: only patch once
+if (!window.__truckDropdownFixApplied) {
+  window.__truckDropdownFixApplied = true;
+
+  // 1) Safe replacement for populateProfileDropdowns that BUILDS truck options first
+  (function(){
+    const original = window.populateProfileDropdowns;
+    window.populateProfileDropdowns = function populateProfileDropdowns(){
+      try {
+        // Build trucks first
+        const tSel = document.getElementById('truckProfile');
+        if (tSel) {
+          tSel.innerHTML = '';
+          if (Array.isArray(window.truckProfiles)) {
+            window.truckProfiles.forEach(t => {
+              const o = document.createElement('option');
+              o.value = t.name;
+              o.textContent = t.name;
+              tSel.appendChild(o);
+            });
+          }
+          if (tSel.options.length) {
+            tSel.selectedIndex = 0;
+            if (typeof window.fillTruckDimensions === 'function') window.fillTruckDimensions();
+          }
+        }
+
+        // Let the original function (if any) do the rest (cases, legend, etc.)
+        if (typeof original === 'function') {
+          original();
+        } else {
+          // Fallback: minimally ensure the case dropdown has *something*
+          const cSel = document.getElementById('caseProfile');
+          if (cSel && Array.isArray(window.caseProfiles)) {
+            if (!cSel.options.length) {
+              window.caseProfiles.forEach(c => {
+                const o = document.createElement('option');
+                o.value = c.name;
+                o.textContent = c.name;
+                cSel.appendChild(o);
+              });
+            }
+          }
+        }
+      } catch(e) {
+        console.error('populateProfileDropdowns fix error:', e);
+      }
+    };
+  })();
+
+  // 2) Make sure saved trucks from localStorage are reconstructed correctly (if your code wasn’t already)
+  (function(){
+    const original = window.loadProfiles;
+    window.loadProfiles = function loadProfiles(){
+      try {
+        // Run original loader first (if present)
+        if (typeof original === 'function') original();
+
+        // Then normalize truckProfiles so each entry has name/length/width/height/maxWeight as numbers
+        if (Array.isArray(window.truckProfiles)) {
+          const needsMap = window.truckProfiles.some(t => typeof t.length !== 'number');
+          if (needsMap) {
+            window.truckProfiles = window.truckProfiles.map(v => ({
+              name: v.name,
+              length: +v.length,
+              width: +v.width,
+              height: +v.height,
+              maxWeight: +v.maxWeight || 0
+            }));
+          }
+        }
+      } catch(e) {
+        console.error('loadProfiles fix error:', e);
+      }
+    };
+  })();
+
+  // 3) Enforce init order on DOMContentLoaded: load -> create defaults -> populate
+  (function(){
+    function runInit(){
+      try { if (typeof window.loadProfiles === 'function') window.loadProfiles(); } catch(e){}
+      try { if (typeof window.createDefaultProfiles === 'function') window.createDefaultProfiles(); } catch(e){}
+      try { if (typeof window.populateProfileDropdowns === 'function') window.populateProfileDropdowns(); } catch(e){}
+      try {
+        // Quality of life: change handler so switching trucks updates dimensions
+        const tp = document.getElementById('truckProfile');
+        if (tp && typeof window.fillTruckDimensions === 'function') {
+          tp.removeEventListener('change', window.fillTruckDimensions);
+          tp.addEventListener('change', window.fillTruckDimensions);
+        }
+      } catch(e){}
+    }
+
+    // Remove other DOMContentLoaded inits only if they run the old order (we can’t safely remove unknown ones),
+    // so we just run ours too — it’s idempotent and safe.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', runInit);
+    } else {
+      // DOM is already ready
+      setTimeout(runInit, 0);
+    }
+  })();
+}
+</script>
+
 </body>
 </html>
 
