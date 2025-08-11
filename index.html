@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Truck Loader — JS port of Python packing math</title>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f6f7fb;margin:0}
+    .container{display:flex;gap:12px;padding:12px;height:100vh}
+    .left{width:360px;background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:12px;overflow:auto}
+    .right{flex:1;background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.06);display:flex;flex-direction:column;min-width:480px}
+    .section{border:1px solid #e5e7eb;border-radius:8px;margin-bottom:12px}
+    .section>.hd{padding:10px 12px;border-bottom:1px solid #e5e7eb;background:#f8fafc;font-weight:700;color:#334155;border-radius:8px 8px 0 0}
+    .section>.bd{padding:12px}
+    .row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    label{font-size:12px;color:#475569;min-width:110px}
+    input,select{border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;font-size:12px;flex:1}
+    input:focus,select:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+    .btn{border:0;border-radius:6px;padding:8px 10px;font-size:12px;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .primary{background:#2563eb;color:#fff}
+    .secondary{background:#64748b;color:#fff}
+    .warn{background:#f59e0b;color:#111827}
+    .success{background:#16a34a;color:#fff}
+    .danger{background:#dc2626;color:#fff}
+    .group{display:flex;gap:6px;flex-wrap:wrap}
+    .list{border-top:1px solid #e5e7eb;max-height:160px;overflow:auto;font-size:12px}
+    .item{padding:8px 10px;border-bottom:1px solid #f1f5f9;cursor:pointer}
+    .item.selected{background:#2563eb;color:#fff}
+    .tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f8fafc}
+    .tab{padding:12px 16px;cursor:pointer;color:#334155;border-bottom:2px solid transparent}
+    .tab.active{color:#2563eb;background:#fff;border-bottom-color:#2563eb}
+    .panel{flex:1;padding:12px;overflow:auto}
+    .controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px;border-bottom:1px solid #e5e7eb;background:#f8fafc}
+    .canvas-wrap{position:relative;flex:1;overflow:auto}
+    canvas{display:block;border:1px solid #e5e7eb;background:#fff}
+    .legend{display:flex;gap:10px;flex-wrap:wrap;padding:10px 0;font-size:12px;color:#334155}
+    .legend .sw{width:12px;height:12px;border:1px solid #0f172a22;border-radius:2px;margin-right:6px;display:inline-block;vertical-align:middle}
+    .status{padding:10px 12px;background:#f8fafc;border-top:1px solid #e5e7eb;font-size:12px;color:#475569}
+    .debug{background:#0b1020;color:#d1d5db;border-radius:8px;padding:10px;font:12px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace;height:320px;overflow:auto;white-space:pre-wrap}
+    @media(max-width:960px){.container{flex-direction:column}.left{width:100%}}
+  
+  .stats-card{max-width:820px;margin:0 auto;border:1px solid #e5e7eb;border-radius:10px;padding:18px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05);font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .stats-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;color:#475569}
+  .stats-title{font-weight:800;text-align:center;margin:8px 0 12px 0;color:#111827;letter-spacing:.3px}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .stats-block{border:1px solid #e5e7eb;border-radius:8px;padding:12px}
+  .stats-block h4{margin:0 0 10px 0;font-size:12px;color:#334155;letter-spacing:.2px}
+  .kv{display:flex;justify-content:space-between;margin:4px 0}
+  .kv b{color:#111827}
+  .case-row{display:flex;justify-content:space-between;border-top:1px dashed #e5e7eb;padding:6px 0;font-size:12px}
+  .case-row:first-of-type{border-top:0;padding-top:0}
+  .dim{font-size:11px;color:#64748b}
+  .smallnote{font-size:11px;color:#64748b;margin-top:8px}
+  @media print{ body{background:#fff} .left,.tabs,.controls,.status,.legend{display:none!important} .right{box-shadow:none} .stats-card{box-shadow:none;border:0;margin:0} }
+
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="left">
+    <div class="section">
+      <div class="hd">🚛 Truck Configuration</div>
+      <div class="bd">
+        <div class="row">
+          <label>Profile</label>
+          <select id="truckProfile"></select>
+          <div class="group">
+            <button class="btn secondary" onclick="newTruckDialog()">New</button>
+            <button class="btn secondary" onclick="editTruckDialog()">Edit</button>
+            <button class="btn danger" onclick="deleteTruckProfile()">Del</button>
+          </div>
+        </div>
+        <div class="row"><label>Length (in)</label><input type="number" id="truckLength" min="0" step="1"></div>
+        <div class="row"><label>Width (in)</label><input type="number" id="truckWidth" min="0" step="1"></div>
+        <div class="row"><label>Height (in)</label><input type="number" id="truckHeight" min="0" step="1"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="hd">📦 Case Configuration</div>
+      <div class="bd">
+        <div class="row">
+          <label>Case Type</label>
+          <select id="caseProfile"></select>
+          <div class="group">
+            <button class="btn secondary" onclick="newCaseDialog()">New</button>
+            <button class="btn secondary" onclick="editCaseDialog()">Edit</button>
+            <button class="btn danger" onclick="deleteCaseProfile()">Del</button>
+          </div>
+        </div>
+        <div id="freestackInfo" style="font-size:11px;color:#2563eb;margin-bottom:8px"></div>
+        <div class="row"><label>Quantity</label><input type="number" id="caseQuantity" min="1" value="10"></div>
+        <div class="row"><label>Global Max Stack</label><input type="number" id="globalStack" min="1" max="10" value="2"></div>
+        <div style="font-size:11px;color:#64748b;margin:6px 0 10px">(Each case also has its own max stack; we take the minimum)</div>
+        <button class="btn primary" style="width:100%" onclick="addCaseToLoad()">Add to Load</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="hd">📋 Load List</div>
+      <div class="bd">
+        <div id="caseList" class="list"></div>
+        <div class="group" style="margin-top:8px">
+          <button class="btn secondary" onclick="removeSelectedCase()">Remove</button>
+          <button class="btn warn" onclick="clearAllCases()">Clear All</button>
+          <button class="btn success" onclick="addTestLoad()">Test Load</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="hd">⚙️ Options</div>
+      <div class="bd">
+        <div class="row">
+          <div>
+            <label style="margin-right:6px">Algorithm</label>
+            <label><input type="radio" name="algorithm" value="smart" checked> Smart</label>
+            <label style="margin-left:10px"><input type="radio" name="algorithm" value="grid"> Grid</label>
+            <label style="margin-left:10px"><input type="radio" name="algorithm" value="auto_grid"> Auto-Grid</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="hd">🚀 Actions</div>
+      <div class="bd">
+        <button id="packButton" class="btn primary" style="width:100%;margin-bottom:8px" onclick="packAndVisualize()">🚛 Pack Truck</button>
+        <button class="btn warn" style="width:100%;margin-bottom:8px" onclick="quickTest()">⚡ Quick Test (5)</button>
+        <button class="btn secondary" style="width:100%;margin-bottom:8px" onclick="exportReport()">📊 Export Report</button>
+        <button class="btn secondary" style="width:100%;margin-bottom:8px" onclick="exportVisualization()">🖼️ Export PNG</button>
+        <button class="btn success" style="width:100%;margin-bottom:8px" onclick="open3DViewer()">🎲 3D Viewer</button>
+        <button class="btn danger" style="width:100%" onclick="clearAll()">🔄 Clear All</button>
+      </div>
+    </div>
+
+    <div id="statusBar" class="status">Ready</div>
+  </div>
+
+  <div class="right">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('visualization')">Visualization</div>
+      <div class="tab" onclick="switchTab('debug')">Debug Log</div>
+      <div class="tab" onclick="switchTab('statistics')">Statistics</div>
+    </div>
+
+    <div id="visualizationTab" class="panel">
+      <div class="controls">
+        <div>
+          <strong style="font-size:12px;color:#334155">View</strong>
+          <label><input type="radio" name="view" value="top" checked onchange="updateVisualization()"> Top</label>
+          <label><input type="radio" name="view" value="side" onchange="updateVisualization()"> Side</label>
+          <label><input type="radio" name="view" value="front" onchange="updateVisualization()"> Front</label>
+          <label><input type="radio" name="view" value="3d" onchange="updateVisualization()"> 3D</label>
+        </div>
+        <div>
+          <span>Zoom</span>
+          <input type="range" id="zoomSlider" min="0.1" max="5" step="0.1" value="1.2" oninput="document.getElementById('zoomValue').textContent=this.value+'x';updateVisualization()">
+          <span id="zoomValue" style="min-width:40px;display:inline-block;text-align:center">1.2x</span>
+          <button class="btn secondary" onclick="resetZoom()">Reset</button>
+        </div>
+        <div id="3dControls" style="display:none">
+          <span>Az</span>
+          <input type="range" id="azimuthSlider" min="0" max="360" step="1" value="45" oninput="document.getElementById('azimuthValue').textContent=this.value+'°';update3DView()">
+          <span id="azimuthValue" style="min-width:40px;display:inline-block;text-align:center">45°</span>
+          <span>El</span>
+          <input type="range" id="elevationSlider" min="5" max="85" step="1" value="30" oninput="document.getElementById('elevationValue').textContent=this.value+'°';update3DView()">
+          <span id="elevationValue" style="min-width:40px;display:inline-block;text-align:center">30°</span>
+        </div>
+      
+        <div class="control">
+          <button class="btn btn-secondary" onclick="fitView()">Fit & Center</button>
+          <button class="btn btn-secondary" onclick="resetView()">Reset</button>
+        </div>
+        <div class="control">
+          <span>Grid</span>
+          <input type="range" id="gridSize" min="10" max="200" step="5" value="50" oninput="document.getElementById('gridValue').textContent=this.value; updateVisualization()">
+          <span id="gridValue" style="min-width:30px;text-align:center">50</span>
+        </div>
+        <div class="control">
+          <span>Opacity</span>
+          <input type="range" id="faceOpacity" min="0.2" max="1" step="0.05" value="1" oninput="document.getElementById('opacityValue').textContent=this.value; updateVisualization()">
+          <span id="opacityValue" style="min-width:36px;text-align:center">1.00</span>
+        </div>
+        <div class="control">
+          <label><input type="checkbox" id="showWire" checked onchange="updateVisualization()"> Wireframe</label>
+          <label style="margin-left:8px"><input type="checkbox" id="center2D" checked onchange="updateVisualization()"> Center 2D</label>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+    
+        <canvas id="visualizationCanvas" width="1000" height="640"></canvas>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div id="canvasInfo" class="status">No packing to display</div>
+    </div>
+
+    <div id="debugTab" class="panel" style="display:none">
+      <div class="group" style="margin-bottom:8px">
+        <button class="btn secondary" onclick="clearDebugLog()">Clear Log</button>
+        <button class="btn secondary" onclick="exportDebugLog()">Export Log</button>
+      </div>
+      <div id="debugLog" class="debug"></div>
+    </div>
+
+    <div id="statisticsTab" class="panel" style="display:none">
+      <div class="group" style="margin-bottom:10px">
+        <button class="btn secondary" onclick="printStatsCard()">Print / Save as PDF</button>
+        <button class="btn secondary" onclick="exportStatsText()">Export TXT</button>
+      </div>
+      <div id="statisticsContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== Global state & models =====
+let truckProfiles = [];
+let caseProfiles = [];
+let caseLoads = [];
+let currentPacking = [];
+let selectedCaseIndex = -1;
+let scale = 1.0;
+const canvasPadding = 20;
+
+// ====== WebGL solid renderer + Free Camera ======
+let gl=null, glCanvas=null, glProgram=null, glBuffers=null;
+const freeCam = {
+  mode: 'orbit', // 'orbit' | 'free'
+  // orbit
+  radius: 1, azimuthDeg: 45, elevationDeg: 30,
+  // free
+  pos: {x: 0, y: -400, z: 120},
+  yawDeg: 0, pitchDeg: 0,
+  keys: {}
+};
+
+function switchCameraMode(m){
+  freeCam.mode = m;
+  if(m==='orbit'){
+    document.getElementById('azimuthSlider').disabled = false;
+    document.getElementById('elevationSlider').disabled = false;
+  }else{
+    document.getElementById('azimuthSlider').disabled = true;
+    document.getElementById('elevationSlider').disabled = true;
+  }
+  updateVisualization();
+}
+
+// minimal mat4 helpers
+function mat4Identity(){ return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]; }
+function mat4Multiply(a,b){
+  const out=new Array(16).fill(0);
+  for(let r=0;r<4;r++){
+    for(let c=0;c<4;c++){
+      out[r*4+c]=a[r*4+0]*b[0*4+c]+a[r*4+1]*b[1*4+c]+a[r*4+2]*b[2*4+c]+a[r*4+3]*b[3*4+c];
+    }
+  }
+  return out;
+}
+function mat4Translate(m, v){ const [x,y,z]=v; const t=[1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]; return mat4Multiply(m,t); }
+function mat4Scale(m, v){ const [x,y,z]=v; const s=[x,0,0,0, 0,y,0,0, 0,0,z,0, 0,0,0,1]; return mat4Multiply(m,s); }
+function mat4Perspective(fovy, aspect, near, far){
+  const f = 1/Math.tan((fovy*Math.PI/180)/2); const nf = 1/(near - far);
+  return [f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,(2*far*near)*nf,0];
+}
+function vec3Normalize(v){ const len=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/len, v[1]/len, v[2]/len]; }
+function mat4LookAt(eye, center, up){
+  const z = vec3Normalize([eye[0]-center[0], eye[1]-center[1], eye[2]-center[2]]);
+  const x = vec3Normalize([ up[1]*z[2]-up[2]*z[1], up[2]*z[0]-up[0]*z[2], up[0]*z[1]-up[1]*z[0] ]);
+  const y = [ z[1]*x[2]-z[2]*x[1], z[2]*x[0]-z[0]*x[2], z[0]*x[1]-z[1]*x[0] ];
+  return [ x[0],y[0],z[0],0,  x[1],y[1],z[1],0,  x[2],y[2],z[2],0,  -(x[0]*eye[0]+x[1]*eye[1]+x[2]*eye[2]), -(y[0]*eye[0]+y[1]*eye[1]+y[2]*eye[2]), -(z[0]*eye[0]+z[1]*eye[1]+z[2]*eye[2]), 1 ];
+}
+
+function initWebGL(){
+  if(gl) return;
+  glCanvas = document.getElementById('glCanvas');
+  gl = glCanvas.getContext('webgl', {antialias:true, alpha:false});
+  if(!gl){ alert('WebGL not available'); return; }
+  const vsSrc = `
+    attribute vec3 aPosition;
+    attribute vec3 aNormal;
+    uniform mat4 uMVP;
+    uniform mat4 uModel;
+    uniform vec3 uColor;
+    uniform vec3 uLightDir;
+    varying vec3 vColor;
+    void main(){
+      vec3 n = normalize(mat3(uModel) * aNormal);
+      float diff = max(dot(n, -uLightDir), 0.0);
+      float amb = 0.35;
+      vColor = uColor * (amb + 0.65*diff);
+      gl_Position = uMVP * vec4(aPosition, 1.0);
+    }
+  `;
+  const fsSrc = `
+    precision mediump float;
+    varying vec3 vColor;
+    uniform float uAlpha;
+    void main(){
+      gl_FragColor = vec4(vColor, uAlpha);
+    }
+  `;
+  function compile(type,src){ const sh=gl.createShader(type); gl.shaderSource(sh,src); gl.compileShader(sh); if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){ throw new Error(gl.getShaderInfoLog(sh)); } return sh; }
+  const vs=compile(gl.VERTEX_SHADER,vsSrc);
+  const fs=compile(gl.FRAGMENT_SHADER,fsSrc);
+  glProgram = gl.createProgram(); gl.attachShader(glProgram,vs); gl.attachShader(glProgram,fs); gl.linkProgram(glProgram);
+  if(!gl.getProgramParameter(glProgram,gl.LINK_STATUS)){ throw new Error(gl.getProgramInfoLog(glProgram)); }
+  gl.useProgram(glProgram);
+
+  // Box geometry (positions + normals) for a unit cube [0..1]^3
+  const P=[
+    // Front
+    0,0,1, 1,0,1, 1,1,1,  0,0,1, 1,1,1, 0,1,1,
+    // Back
+    1,0,0, 0,0,0, 0,1,0,  1,0,0, 0,1,0, 1,1,0,
+    // Left
+    0,0,0, 0,0,1, 0,1,1,  0,0,0, 0,1,1, 0,1,0,
+    // Right
+    1,0,1, 1,0,0, 1,1,0,  1,0,1, 1,1,0, 1,1,1,
+    // Top
+    0,1,1, 1,1,1, 1,1,0,  0,1,1, 1,1,0, 0,1,0,
+    // Bottom
+    0,0,0, 1,0,0, 1,0,1,  0,0,0, 1,0,1, 0,0,1
+  ];
+  const N=[
+    // Front
+    0,0,1, 0,0,1, 0,0,1,  0,0,1, 0,0,1, 0,0,1,
+    // Back
+    0,0,-1,0,0,-1,0,0,-1, 0,0,-1,0,0,-1,0,0,-1,
+    // Left
+    -1,0,0,-1,0,0,-1,0,0, -1,0,0,-1,0,0,-1,0,0,
+    // Right
+    1,0,0,1,0,0,1,0,0, 1,0,0,1,0,0,1,0,0,
+    // Top
+    0,1,0,0,1,0,0,1,0, 0,1,0,0,1,0,0,1,0,
+    // Bottom
+    0,-1,0,0,-1,0,0,-1,0, 0,-1,0,0,-1,0,0,-1,0
+  ];
+  glBuffers = {
+    pos: gl.createBuffer(),
+    norm: gl.createBuffer()
+  };
+  gl.bindBuffer(gl.ARRAY_BUFFER, glBuffers.pos); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(P), gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, glBuffers.norm); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(N), gl.STATIC_DRAW);
+
+  // locations
+  glProgram.aPosition = gl.getAttribLocation(glProgram, 'aPosition');
+  glProgram.aNormal   = gl.getAttribLocation(glProgram, 'aNormal');
+  glProgram.uMVP      = gl.getUniformLocation(glProgram, 'uMVP');
+  glProgram.uModel    = gl.getUniformLocation(glProgram, 'uModel');
+  glProgram.uColor    = gl.getUniformLocation(glProgram, 'uColor');
+  glProgram.uLightDir = gl.getUniformLocation(glProgram, 'uLightDir');
+  glProgram.uAlpha    = gl.getUniformLocation(glProgram, 'uAlpha');
+
+  gl.enableVertexAttribArray(glProgram.aPosition);
+  gl.bindBuffer(gl.ARRAY_BUFFER, glBuffers.pos);
+  gl.vertexAttribPointer(glProgram.aPosition, 3, gl.FLOAT, false, 0, 0);
+
+  gl.enableVertexAttribArray(glProgram.aNormal);
+  gl.bindBuffer(gl.ARRAY_BUFFER, glBuffers.norm);
+  gl.vertexAttribPointer(glProgram.aNormal, 3, gl.FLOAT, false, 0, 0);
+
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);
+  gl.clearColor(1,1,1,1);
+
+  // keyboard for freecam
+  window.addEventListener('keydown', (e)=>{ freeCam.keys[e.code]=true; });
+  window.addEventListener('keyup', (e)=>{ freeCam.keys[e.code]=false; });
+  // mouse drag to look around in free mode
+  const drag = {active:false, lastX:0,lastY:0};
+  glCanvas.addEventListener('mousedown', (e)=>{ if(freeCam.mode==='free'){ drag.active=true; drag.lastX=e.clientX; drag.lastY=e.clientY; } });
+  window.addEventListener('mouseup', ()=> drag.active=false);
+  window.addEventListener('mousemove', (e)=>{
+    if(freeCam.mode==='free' && drag.active){
+      const dx=e.clientX-drag.lastX, dy=e.clientY-drag.lastY; drag.lastX=e.clientX; drag.lastY=e.clientY;
+      freeCam.yawDeg = (freeCam.yawDeg - dx*0.2)%360;
+      freeCam.pitchDeg = Math.max(-89, Math.min(89, freeCam.pitchDeg - dy*0.2));
+    }
+  });
+}
+
+function renderWebGL(){
+  if(!gl) initWebGL();
+  if(!gl) return;
+  const c = glCanvas;
+  // match size
+  const parent = c.parentElement.getBoundingClientRect();
+  const Wpx = Math.max(900, parent.width-20), Hpx = Math.max(560, parent.height-20);
+  if(c.width !== Wpx || c.height !== Hpx){ c.width=Wpx; c.height=Hpx; }
+  gl.viewport(0,0,c.width,c.height);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  // Scene bounds
+  const L=+document.getElementById('truckLength').value;
+  const W=+document.getElementById('truckWidth').value;
+  const H=+document.getElementById('truckHeight').value;
+  const zoom = +document.getElementById('zoomSlider').value;
+  const alpha = +document.getElementById('faceOpacity').value || 1;
+
+  const fov=45, aspect=c.width/c.height, near=1, far=5000;
+  const P = mat4Perspective(fov, aspect, near, far);
+
+  // camera
+  let V;
+  if(freeCam.mode==='orbit'){
+    const rBase = Math.max(L,W,H)*1.2;
+    const r = rBase / Math.max(0.2, Math.min(5, zoom));
+    const az = (+document.getElementById('azimuthSlider').value) * Math.PI/180;
+    const el = (+document.getElementById('elevationSlider').value) * Math.PI/180;
+    const eye=[ r*Math.cos(el)*Math.cos(az), r*Math.cos(el)*Math.sin(az), r*Math.sin(el) ];
+    V = mat4LookAt(eye, [0,0,0], [0,0,1]);
+  }else{
+    // free camera movement
+    const dt = 1/60; // fixed step
+    const speed = (freeCam.keys['ShiftLeft']||freeCam.keys['ShiftRight'])? 400 : 160;
+    const yaw = freeCam.yawDeg*Math.PI/180, pitch = freeCam.pitchDeg*Math.PI/180;
+    const dir=[ Math.cos(pitch)*Math.cos(yaw), Math.cos(pitch)*Math.sin(yaw), Math.sin(pitch) ];
+    const right=[ -Math.sin(yaw), Math.cos(yaw), 0 ];
+    const up=[0,0,1];
+    if(freeCam.keys['KeyW']){ freeCam.pos.x += dir[0]*speed*dt; freeCam.pos.y += dir[1]*speed*dt; freeCam.pos.z += dir[2]*speed*dt; }
+    if(freeCam.keys['KeyS']){ freeCam.pos.x -= dir[0]*speed*dt; freeCam.pos.y -= dir[1]*speed*dt; freeCam.pos.z -= dir[2]*speed*dt; }
+    if(freeCam.keys['KeyA']){ freeCam.pos.x -= right[0]*speed*dt; freeCam.pos.y -= right[1]*speed*dt; }
+    if(freeCam.keys['KeyD']){ freeCam.pos.x += right[0]*speed*dt; freeCam.pos.y += right[1]*speed*dt; }
+    if(freeCam.keys['KeyQ']){ freeCam.pos.z -= speed*dt; }
+    if(freeCam.keys['KeyE']){ freeCam.pos.z += speed*dt; }
+    const eye=[freeCam.pos.x, freeCam.pos.y, freeCam.pos.z];
+    const center=[freeCam.pos.x+dir[0], freeCam.pos.y+dir[1], freeCam.pos.z+dir[2]];
+    V = mat4LookAt(eye, center, [0,0,1]);
+  }
+
+  // draw all boxes
+  gl.useProgram(glProgram);
+  gl.uniform1f(glProgram.uAlpha, alpha);
+  gl.uniform3f(glProgram.uLightDir, 0.6, 0.7, 0.9);
+
+  for(const pc of currentPacking){
+    // base color
+    let base = pc.caseProfile ? pc.caseProfile.color : '#3498db';
+    if(pc.rotation===90) base = '#f39c12';
+    const r = parseInt(base.slice(1,3),16)/255;
+    const g = parseInt(base.slice(3,5),16)/255;
+    const b = parseInt(base.slice(5,7),16)/255;
+    gl.uniform3f(glProgram.uColor, r,g,b);
+
+    // Model: scale to (w,l,h) then translate to centered coords
+    const w=pc.width, l=pc.length, h=pc.height;
+    const x=pc.x + w/2 - L/2;
+    const y=pc.y + l/2 - W/2;
+    const z=pc.z + h/2 - H/2;
+
+    let M = mat4Identity();
+    M = mat4Translate(M, [x,y,z]);
+    M = mat4Scale(M, [w,l,h]);
+
+    const MVP = mat4Multiply(mat4Multiply(P, V), M);
+    gl.uniformMatrix4fv(glProgram.uModel, false, new Float32Array(M));
+    gl.uniformMatrix4fv(glProgram.uMVP,   false, new Float32Array(MVP));
+
+    gl.drawArrays(gl.TRIANGLES, 0, 36);
+  }
+}
+
+function ensureRendererVisibility(){
+  const engine = document.querySelector('input[name="engine3d"]:checked')?.value || 'canvas';
+  const view = document.querySelector('input[name="view"]:checked')?.value || 'top';
+  const glCv = document.getElementById('glCanvas');
+  const c2d = document.getElementById('visualizationCanvas');
+  if(view==='3d' && engine==='webgl'){
+    glCv.style.display='block'; c2d.style.display='none';
+  }else{
+    glCv.style.display='none'; c2d.style.display='block';
+  }
+}
+
+// ===== View state & interactions =====
+const viewState = {
+  panX: 0, panY: 0,           // pixels (both 2D & 3D)
+  center3D: true,             // keep truck centered around its model center
+  fitScale2D: 1, fitScale3D: 1
+};
+
+function fitView(){
+  const c=document.getElementById('visualizationCanvas');
+  const view=document.querySelector('input[name="view"]:checked').value;
+  if(view==='3d'){
+    // recompute fit scale for 3D (we compute inside draw3DView too, but cache here for reset)
+    viewState.panX = 0; viewState.panY = 0;
+    updateVisualization();
+  }else{
+    // 2D fit recalculated in draw2DView; just reset pan
+    viewState.panX = 0; viewState.panY = 0;
+    updateVisualization();
+  }
+}
+function resetView(){
+  document.getElementById('zoomSlider').value = 1.2;
+  document.getElementById('zoomValue').textContent = '1.2x';
+  document.getElementById('azimuthSlider').value = 45;
+  document.getElementById('azimuthValue').textContent = '45°';
+  document.getElementById('elevationSlider').value = 30;
+  document.getElementById('elevationValue').textContent = '30°';
+  viewState.panX = 0; viewState.panY = 0;
+  updateVisualization();
+}
+
+// Pointer: left-drag = orbit (3D) or pan (2D), Shift+drag = pan (3D). Wheel = zoom.
+(function attachCanvasInteractions(){
+  const canvas = document.getElementById('visualizationCanvas');
+  let dragging=false, mode=''; // 'orbit' | 'pan'
+  let lastX=0,lastY=0;
+  canvas.addEventListener('mousedown',(e)=>{
+    dragging=true; lastX=e.clientX; lastY=e.clientY;
+    const view=document.querySelector('input[name="view"]:checked').value;
+    if(view==='3d'){
+      mode = e.shiftKey ? 'pan' : 'orbit';
+    }else{
+      mode = 'pan';
+    }
+  });
+  window.addEventListener('mouseup',()=>{ dragging=false; mode=''; });
+  window.addEventListener('mousemove',(e)=>{
+    if(!dragging) return;
+    const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+    const view=document.querySelector('input[name="view"]:checked').value;
+    if(view==='3d' && mode==='orbit'){
+      const az = +document.getElementById('azimuthSlider').value;
+      const el = +document.getElementById('elevationSlider').value;
+      let newAz = (az + dx*0.5) % 360; if(newAz<0) newAz+=360;
+      let newEl = Math.max(5, Math.min(85, el - dy*0.3));
+      document.getElementById('azimuthSlider').value = newAz; document.getElementById('azimuthValue').textContent=newAz.toFixed(0)+'°';
+      document.getElementById('elevationSlider').value = newEl; document.getElementById('elevationValue').textContent=newEl.toFixed(0)+'°';
+      updateVisualization();
+    }else{
+      // pan in pixels
+      viewState.panX += dx;
+      viewState.panY += dy;
+      updateVisualization();
+    }
+  });
+  canvas.addEventListener('wheel',(e)=>{
+    e.preventDefault();
+    const z = +document.getElementById('zoomSlider').value;
+    const delta = -Math.sign(e.deltaY)*0.1;
+    let nz = Math.max(0.1, Math.min(5, z + delta));
+    document.getElementById('zoomSlider').value = nz.toFixed(1);
+    document.getElementById('zoomValue').textContent = nz.toFixed(1)+'x';
+    updateVisualization();
+  }, {passive:false});
+})();
+
+const defaultColors = ['#3498db','#2ecc71','#e74c3c','#f39c12','#9b59b6','#1abc9c','#34495e','#e67e22','#95a5a6','#d35400'];
+
+// Data classes
+class TruckProfile{ constructor(name,length,width,height,maxWeight=0){ Object.assign(this,{name,length,width,height,maxWeight}); } }
+class CaseProfile{ constructor(name,side1,side2,height,weight=0,fragile=false,freestack=false,maxStack=2,color='#3498db'){ Object.assign(this,{name,side1,side2,height,weight,fragile,freestack,maxStack,color}); } }
+class CaseLoad{ constructor(profile,quantity){ this.profile=profile; this.quantity=quantity; this.packedCount=0; } }
+class PackedCase{ constructor(x,y,z,width,length,height,layer,orientation,caseType,rotation=0,caseProfile=null,isFreestack=false){ Object.assign(this,{x,y,z,width,length,height,layer,orientation,caseType,rotation,caseProfile,isFreestack}); } }
+
+// ===== Logging & status =====
+function debugLog(msg){ const t=new Date().toTimeString().split(' ')[0]; const el=document.getElementById('debugLog'); el.textContent += `[${t}] ${msg}\n`; el.scrollTop = el.scrollHeight; }
+function updateStatusBar(t){ document.getElementById('statusBar').textContent = t; }
+
+// ===== Storage =====
+function saveProfiles(){ localStorage.setItem('truckProfiles', JSON.stringify(truckProfiles)); localStorage.setItem('caseProfiles', JSON.stringify(caseProfiles)); }
+function loadProfiles(){
+  try{ const t=JSON.parse(localStorage.getItem('truckProfiles')||'null'); if(t){ truckProfiles = t.map(v=>new TruckProfile(v.name,+v.length,+v.width,+v.height,+v.maxWeight)); } }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem('caseProfiles')||'null'); if(c){ caseProfiles = c.map(v=>new CaseProfile(v.name,+v.side1,+v.side2,+v.height,+v.weight,!!v.fragile,!!v.freestack,+v.maxStack,v.color||'#3498db')); } }catch(e){}
+}
+function createDefaultProfiles(){
+  if(!truckProfiles.length){ truckProfiles=[
+    new TruckProfile("Small Van",120,60,60,2000),
+    new TruckProfile("16' Box Truck",192,90,84,4850),
+    new TruckProfile("26' Box Truck",312,96,96,26000),
+    new TruckProfile("53' Trailer",636,102,110,45000),
+  ]; }
+  if(!caseProfiles.length){ caseProfiles=[
+    new CaseProfile("Small Box",12,12,12,10,false,false,3,'#3498db'),
+    new CaseProfile("Medium Box",18,18,16,25,false,false,2,'#2ecc71'),
+    new CaseProfile("Large Box",24,20,20,40,false,false,2,'#e74c3c'),
+    new CaseProfile("Pallet",48,40,48,2000,false,false,1,'#f39c12'),
+    new CaseProfile("Long Box",36,12,12,30,false,false,3,'#9b59b6'),
+    new CaseProfile("Toolbox",18,12,8,15,false,true,4,'#e67e22'),
+    new CaseProfile("Briefcase",16,10,6,8,false,true,5,'#95a5a6'),
+    new CaseProfile("Poster Case",22,82,35,120,false,false,2,'#34495e'),
+    new CaseProfile("Free Case",18,13,7,12,false,true,3,'#d35400'),
+  ]; }
+  saveProfiles();
+}
+function populateProfileDropdowns(){
+  const tSel=document.getElementById('truckProfile'); const cSel=document.getElementById('caseProfile');
+  tSel.innerHTML=''; cSel.innerHTML='';
+  truckProfiles.forEach(t=>{ const o=document.createElement('option'); o.value=t.name; o.textContent=t.name; tSel.appendChild(o); });
+  caseProfiles.forEach(c=>{ const o=document.createElement('option'); o.value=c.name; o.textContent=c.name; cSel.appendChild(o); });
+  if(truckProfiles.length){ tSel.selectedIndex=0; fillTruckDimensions(); }
+  if(caseProfiles.length){ cSel.selectedIndex=0; updateCaseInfo(); }
+  renderLegend();
+}
+
+// ===== UI wiring =====
+function fillTruckDimensions(){ const name=document.getElementById('truckProfile').value; const t=truckProfiles.find(v=>v.name===name); if(!t) return; ['Length','Width','Height'].forEach(k=>document.getElementById('truck'+k).value=t[k.toLowerCase()]); debugLog(`Selected truck: ${t.name}`); updateVisualization(); }
+function updateCaseInfo(){ const name=document.getElementById('caseProfile').value; const p=caseProfiles.find(v=>v.name===name); const info=document.getElementById('freestackInfo'); if(!p){info.textContent='';return;} if(p.freestack){ info.textContent=`📦 FREESTACK: Max Stack ${p.maxStack} | Placed above base`; info.style.color='#a855f7'; } else { info.textContent=`📦 STANDARD: Max Stack ${p.maxStack}`; info.style.color='#2563eb'; } }
+function renderLegend(){ const el=document.getElementById('legend'); el.innerHTML=''; caseProfiles.forEach(c=>{ const it=document.createElement('div'); const sw=document.createElement('span'); sw.className='sw'; sw.style.background=c.color; it.appendChild(sw); it.appendChild(document.createTextNode(c.name)); el.appendChild(it); }); }
+
+// ===== Load list =====
+function updateCaseList(){ const list=document.getElementById('caseList'); list.innerHTML=''; let total=0,reg=0,free=0;
+  caseLoads.forEach((load,i)=>{ const div=document.createElement('div'); div.className='item'+(i===selectedCaseIndex?' selected':''); const badge=load.profile.freestack?' [FREESTACK]':''; const stack=` (Stack ${load.profile.maxStack})`; div.textContent=`${load.profile.name}: ${load.quantity} (${load.packedCount} packed)${stack}${badge}`; div.onclick=()=>{selectedCaseIndex=i; updateCaseList();}; list.appendChild(div); total+=load.quantity; if(load.profile.freestack) free+=load.quantity; else reg+=load.quantity; });
+  updateStatusBar(`Total: ${total} cases${free?` (${reg} regular, ${free} freestack)`:''}`);
+  renderLegend();
+}
+function addCaseToLoad(){ const name=document.getElementById('caseProfile').value; const qty=+document.getElementById('caseQuantity').value; const p=caseProfiles.find(v=>v.name===name); if(!p||!(qty>0)) return alert('Select a case and valid quantity'); caseLoads.push(new CaseLoad(p,qty)); debugLog(`Added ${qty} × ${name}`); updateCaseList(); }
+function addTestLoad(){ caseLoads=[]; const poster=caseProfiles.find(p=>p.name==='Poster Case'); if(poster) caseLoads.push(new CaseLoad(poster,2)); const reg=caseProfiles.filter(p=>!p.freestack); if(reg[0]) caseLoads.push(new CaseLoad(reg[0],8)); if(reg[1]) caseLoads.push(new CaseLoad(reg[1],4)); const free=caseProfiles.filter(p=>p.freestack); const frc=caseProfiles.find(p=>p.name==='Free Case'); if(frc) caseLoads.push(new CaseLoad(frc,8)); if(free[0]) caseLoads.push(new CaseLoad(free[0],3)); updateCaseList(); debugLog('Added test load'); }
+function quickTest(){ caseLoads=[]; const poster=caseProfiles.find(p=>p.name==='Poster Case'); if(poster) caseLoads.push(new CaseLoad(poster,1)); const free=caseProfiles.filter(p=>p.freestack); if(free[0]) caseLoads.push(new CaseLoad(free[0],4)); updateCaseList(); packAndVisualize(); }
+function removeSelectedCase(){ if(selectedCaseIndex<0) return alert('Pick a line to remove'); const rm=caseLoads.splice(selectedCaseIndex,1)[0]; debugLog(`Removed ${rm.profile.name}`); selectedCaseIndex=-1; updateCaseList(); }
+function clearAllCases(){ caseLoads=[]; updateCaseList(); debugLog('Cleared load list'); }
+
+// ===== Math helpers (ported from Python) =====
+const EPS=1e-6;
+function eq(a,b,eps=EPS){ return Math.abs(a-b)<eps; }
+function isSpaceFree(arr,x,y,z,w,l,h){
+  for(const c of arr){
+    if(!((x+w)<=c.x || x>=(c.x+c.width) || (y+l)<=c.y || y>=(c.y+c.length) || (z+h)<=c.z || z>=(c.z+c.height))){ return false; }
+  }
+  return true;
+}
+function stackCountAt(arr,x,y,w,l){ let count=0; for(const c of arr){ if(eq(c.x,x)&&eq(c.y,y)&&eq(c.width,w)&&eq(c.length,l)) count++; } return count; }
+function belowCase(arr,x,y,w,l,z){ for(const c of arr){ if(eq(c.x,x)&&eq(c.y,y)&&eq(c.width,w)&&eq(c.length,l)&&eq(c.z+c.height,z)) return c; } return null; }
+function canPlaceWithLikeStack(arr,x,y,z,w,l,caseType,caseMaxStack){
+  if(eq(z,0.0)) return true;
+  const below = belowCase(arr,x,y,w,l,z);
+  if(!below) return false;
+  if(below.caseType !== caseType) return false;
+  const curr = stackCountAt(arr,x,y,w,l);
+  return curr < caseMaxStack;
+}
+
+// ===== Freestack spanning (continuous surfaces) =====
+function findFreestackSurfaces(arr,L,W,H){
+  const byZ = new Map();
+  for(const c of arr){
+    if(!c.isFreestack){
+      const top = c.z + c.height;
+      if(top < H){
+        const list = byZ.get(top) || [];
+        list.push({x:c.x, y:c.y, width:c.width, length:c.length, z:top, available_height: H - top});
+        byZ.set(top, list);
+      }
+    }
+  }
+  const merged=[];
+  for(const [zLevel, surfaces] of byZ.entries()){
+    if(!surfaces.length) continue;
+    const minX = Math.min(...surfaces.map(s=>s.x));
+    const maxX = Math.max(...surfaces.map(s=>s.x+s.width));
+    const minY = Math.min(...surfaces.map(s=>s.y));
+    const maxY = Math.max(...surfaces.map(s=>s.y+s.length));
+    const gridRes = 1.0;
+    const gw = Math.floor((maxX-minX)/gridRes)+1;
+    const gl = Math.floor((maxY-minY)/gridRes)+1;
+    const grid = Array.from({length:gw},()=>Array(gl).fill(false));
+    for(const s of surfaces){
+      const sx = Math.floor((s.x-minX)/gridRes);
+      const ex = Math.floor((s.x+s.width-minX)/gridRes);
+      const sy = Math.floor((s.y-minY)/gridRes);
+      const ey = Math.floor((s.y+s.length-minY)/gridRes);
+      for(let i=Math.max(0,sx); i<=Math.min(gw-1,ex); i++){
+        for(let j=Math.max(0,sy); j<=Math.min(gl-1,ey); j++){
+          grid[i][j]=true;
+        }
+      }
+    }
+    const vis = Array.from({length:gw},()=>Array(gl).fill(false));
+    for(let i=0;i<gw;i++){
+      for(let j=0;j<gl;j++){
+        if(grid[i][j] && !vis[i][j]){
+          let rW=0,rL=0;
+          for(let w=i; w<gw && grid[w][j]; w++) rW++;
+          for(let l=j; l<gl; l++){
+            let ok=true;
+            for(let w=i; w<i+rW; w++){ if(w>=gw || !grid[w][l]){ ok=false; break; } }
+            if(ok) rL++; else break;
+          }
+          for(let w=i; w<i+rW; w++){ for(let l=j; l<j+rL; l++){ if(w<gw && l<gl) vis[w][l]=true; } }
+          const regionX = minX + i*gridRes;
+          const regionY = minY + j*gridRes;
+          const regionW = rW*gridRes;
+          const regionL = rL*gridRes;
+          if(regionW >= 6 && regionL >= 6){
+            merged.push({x:regionX, y:regionY, z:zLevel, width:regionW, length:regionL, available_height: H - zLevel});
+          }
+        }
+      }
+    }
+  }
+  return merged;
+}
+function canPlaceFreestackItem(arr, surface, w,l,h){
+  if(h > surface.available_height) return {count:0, positions:[]};
+  const acrossW = Math.floor(surface.width / w);
+  const acrossL = Math.floor(surface.length / l);
+  if(acrossW===0 || acrossL===0) return {count:0, positions:[]};
+  const pos=[];
+  for(let row=0; row<acrossL; row++){
+    for(let col=0; col<acrossW; col++){
+      const x = surface.x + col*w;
+      const y = surface.y + row*l;
+      const z = surface.z;
+      if(isSpaceFree(arr,x,y,z,w,l,h)) pos.push([x,y,z]);
+    }
+  }
+  return {count:pos.length, positions:pos};
+}
+function placeFreestackItems(arr,L,W,H){
+  const userStackMax = +document.getElementById('globalStack').value || 99;
+
+  // Expand freestack loads into a flat list of items
+  const freestackLoads = [];
+  for(const load of caseLoads){
+    if(load.profile.freestack){
+      const remaining = Math.max(0, load.quantity - load.packedCount);
+      for(let i=0;i<remaining;i++) freestackLoads.push(load);
+    }
+  }
+  if(!freestackLoads.length) return arr;
+
+  debugLog(`Placing ${freestackLoads.length} freestack items on continuous surfaces with stacking`);
+
+  // Group by profile to stack consistently per type
+  const byProfile = new Map();
+  for(const load of freestackLoads){
+    const p = load.profile;
+    const key = [p.name, p.side1, p.side2, p.height, p.maxStack].join('|');
+    const list = byProfile.get(key) || [];
+    list.push(load);
+    byProfile.set(key, list);
+  }
+
+  let totalPlaced = 0;
+
+  for(const [key, items] of byProfile.entries()){
+    const [name, s1S, s2S, hS, msS] = key.split('|');
+    const s1 = +s1S, s2 = +s2S, h = +hS, pMax = +msS;
+    let itemsRemaining = items.length;
+
+    // Allowed layers for this freestack type
+    const allowedLayersGlobal = Math.max(1, Math.min(userStackMax, pMax));
+
+    debugLog(`Freestack '${name}': trying up to ${allowedLayersGlobal} layers (h=${h})`);
+
+    // Try both orientations; prefer the one that fills more positions per surface first
+    for(const [w,l,rot] of [[s1,s2,0],[s2,s1,90]]){
+      if(itemsRemaining===0) break;
+
+      // Always refetch surfaces so they reflect whatever regular items were placed.
+      // (We don't need to rebuild after each freestack layer because we place subsequent layers
+      //  directly above the same XY positions.)
+      const surfaces = findFreestackSurfaces(arr,L,W,H)
+        .sort((a,b)=> (b.width*b.length) - (a.width*a.length));
+
+      for(const surface of surfaces){
+        if(itemsRemaining===0) break;
+
+        // How many vertical layers fit on this surface?
+        const layersOnSurface = Math.min(
+          allowedLayersGlobal,
+          Math.floor(surface.available_height / h)
+        );
+        if(layersOnSurface <= 0) continue;
+
+        const res = canPlaceFreestackItem(arr, surface, w, l, h);
+        if(res.count === 0) continue;
+
+        const coords = res.positions; // XY positions for bottom layer
+        const maxSlots = coords.length * layersOnSurface;
+        const toPlace = Math.min(maxSlots, itemsRemaining);
+
+        debugLog(`  Surface ${Math.round(surface.width)}×${Math.round(surface.length)} at Z=${Math.round(surface.z)}: ${coords.length} XY slots × ${layersOnSurface} layers = ${maxSlots}`);
+        debugLog(`    Using orientation ${rot===0?'normal':'rotated 90°'} → placing ${toPlace}`);
+
+        let placedHere = 0;
+        outer: for(let i=0; i<coords.length; i++){
+          const [x,y,z0] = coords[i];
+          for(let layer=0; layer<layersOnSurface; layer++){
+            if(placedHere >= toPlace) break outer;
+            const z = z0 + layer*h;
+            if(!isSpaceFree(arr, x, y, z, w, l, h)) continue;
+            // enforce like-on-like for higher layers
+            if(layer>0){
+              const below = belowCase(arr, x, y, w, l, z);
+              if(!below || below.caseType !== name) continue;
+            }
+            const load = items[(totalPlaced) % items.length];
+            const p = load.profile;
+            arr.push(new PackedCase(x, y, z, w, l, h, 1000+layer+1, rot===0?'normal':'rotated', p.name, rot, p, true));
+            load.packedCount += 1;
+            placedHere += 1;
+            totalPlaced += 1;
+            itemsRemaining -= 1;
+            if(itemsRemaining===0) break outer;
+          }
+        }
+
+        if(placedHere>0){
+          debugLog(`    Placed ${placedHere} on this surface across ${layersOnSurface} layers.`);
+        }
+      }
+    }
+  }
+
+  debugLog(`Freestack complete. Placed ${totalPlaced} items across all surfaces/layers.`);
+  return arr;
+}
+
+// ===== Packing algorithms (ported) =====
+function packAndVisualize(){
+  if(!caseLoads.length) return alert('Add cases to load first');
+  const L=+document.getElementById('truckLength').value, W=+document.getElementById('truckWidth').value, H=+document.getElementById('truckHeight').value;
+  const userStackMax = +document.getElementById('globalStack').value || 99;
+  caseLoads.forEach(l=>l.packedCount=0);
+  debugLog('==================================================');
+  debugLog(`START PACK | Truck ${L}L × ${W}W × ${H}H`);
+  debugLog('Individual Stack Heights (per case):'); caseLoads.forEach(l=> debugLog(`  ${l.profile.name}: Max Stack ${l.profile.maxStack}`));
+  const btn=document.getElementById('packButton'); btn.disabled=true; btn.textContent='Packing…';
+  setTimeout(()=>{
+    try{
+      const alg = document.querySelector('input[name="algorithm"]:checked').value;
+      const regular = caseLoads.filter(l=>!l.profile.freestack);
+      const free = caseLoads.filter(l=>l.profile.freestack);
+      debugLog(`Regular items: ${regular.length} types`);
+      debugLog(`Freestack items: ${free.length} types`);
+      // Temporarily set caseLoads = regular for internal helpers
+      const original = caseLoads; caseLoads = regular;
+      let arrangement=[];
+      if(alg==='auto_grid'){ debugLog('Using Auto Grid (with rotated remainder) for regular items'); arrangement = autoGridPack(L,W,H,userStackMax); }
+      else if(alg==='smart'){ debugLog('Using smart packing algorithm for regular items'); arrangement = smartPack(L,W,H,userStackMax); }
+      else { debugLog('Using grid packing algorithm for regular items'); arrangement = simpleGridPack(L,W,H,userStackMax); }
+      if(alg!=='auto_grid'){ arrangement = edgeFillPass(arrangement,L,W,H,userStackMax); }
+      // Restore full loads
+      caseLoads = original;
+      if(free.length){ debugLog('=============================='); debugLog('FREESTACK PHASE: Placing items on existing surfaces'); arrangement = placeFreestackItems(arrangement,L,W,H); }
+      currentPacking = arrangement;
+      updateCaseList(); updateVisualization(); updateStatistics(); renderStatisticsCard();
+      const requested = caseLoads.reduce((s,l)=>s+l.quantity,0); const packed = arrangement.length; const reg = arrangement.filter(c=>!c.isFreestack).length; const fr = arrangement.length - reg;
+      debugLog(`PACK DONE: ${packed}/${requested} total`); debugLog(`  Regular: ${reg}, Freestack: ${fr}`);
+      let summary = `Packing Complete!\n\nTotal: ${packed}/${requested} cases`; if(requested) summary += ` (${(packed/requested*100).toFixed(1)}%)`;
+      if(fr>0){ summary += `\n\nRegular items: ${reg}\nFreestack items: ${fr}`; }
+      summary += `\n\n` + caseLoads.map(l=> `${l.profile.name}: ${l.packedCount}/${l.quantity}` + (l.profile.freestack?' [FREESTACK]':'' )).join('\n');
+      alert(summary);
+    }catch(e){ console.error(e); debugLog('Packing error: '+e.message); alert('Packing failed: '+e.message); }
+    finally{ btn.disabled=false; btn.textContent='🚛 Pack Truck'; }
+  }, 20);
+}
+
+function allowedStackFor(p,H,userStackMax){ return Math.max(1, Math.min(p.maxStack, Math.floor(H / p.height), userStackMax)); }
+
+// Smart pack: available position frontier
+function smartPack(L,W,H,userStackMax){
+  const out=[]; const toPack=[];
+  for(const load of caseLoads){ if(!load.profile.freestack){ for(let i=0;i<load.quantity;i++) toPack.push(load); } }
+  if(!toPack.length) return out;
+  toPack.sort((a,b)=> (b.profile.side1*b.profile.side2*b.profile.height) - (a.profile.side1*a.profile.side2*a.profile.height));
+  let positions = [[0,0,0]];
+  const t0 = performance.now();
+  for(const load of toPack){
+    if(performance.now()-t0 > 30000){ debugLog('Timeout in smart pack'); break; }
+    const p=load.profile; const allowed = allowedStackFor(p,H,userStackMax);
+    let best=null;
+    for(const [w,l,rot] of [[p.side1,p.side2,0],[p.side2,p.side1,90]]){
+      if(w>L||l>W||p.height>H) continue;
+      for(const [x,y,z] of positions){
+        if(x+w<=L && y+l<=W && z+p.height<=H){
+          if(isSpaceFree(out,x,y,z,w,l,p.height) && canPlaceWithLikeStack(out,x,y,z,w,l,p.name,allowed)){ best=[x,y,z,w,l,rot]; break; }
+        }
+      }
+      if(best) break;
+    }
+    if(best){
+      const [x,y,z,w,l,rot]=best;
+      out.push(new PackedCase(x,y,z,w,l,p.height, (p.height>0? Math.floor(z/p.height)+1:1), rot===0?'normal':'rotated', p.name, rot, p, false));
+      load.packedCount += 1;
+      for(const pos of [[x+w,y,z],[x,y+l,z],[x,y,z+p.height]]){
+        const [px,py,pz]=pos; if(px<L && py<W && pz<H && !positions.some(q=> q[0]===px && q[1]===py && q[2]===pz)) positions.push(pos);
+      }
+      positions = positions.filter(v=> !(v[0]===x && v[1]===y && v[2]===z)).sort((a,b)=> a[2]-b[2] || a[1]-b[1] || a[0]-b[0]);
+      if(positions.length>2000) positions = positions.slice(0,2000);
+    }
+  }
+  return out;
+}
+
+// Grid pack: step scanning + stacking constraint
+function simpleGridPack(L,W,H,userStackMax){
+  const out=[]; const toPack=[];
+  for(const load of caseLoads){ if(!load.profile.freestack){ for(let i=0;i<load.quantity;i++) toPack.push(load); } }
+  if(!toPack.length) return out;
+  toPack.sort((a,b)=> (b.profile.side1*b.profile.side2*b.profile.height) - (a.profile.side1*a.profile.side2*a.profile.height));
+  const minW = Math.min(...caseLoads.filter(l=>!l.profile.freestack).map(l=>l.profile.side1));
+  const minL = Math.min(...caseLoads.filter(l=>!l.profile.freestack).map(l=>l.profile.side2));
+  const stepX = Math.max(4, minW/2), stepY = Math.max(4, minL/2);
+  const t0 = performance.now();
+  for(const load of toPack){
+    if(performance.now()-t0 > 30000){ debugLog('Timeout in grid pack'); break; }
+    const p=load.profile; const allowed = allowedStackFor(p,H,userStackMax);
+    if(p.side1>L || p.side2>W || p.height>H) continue;
+    let placed=false;
+    for(const [w,l,rot] of [[p.side1,p.side2,0],[p.side2,p.side1,90]]){
+      if(placed) break; if(w>L||l>W) continue;
+      const maxLayers = allowed;
+      for(let layer=0; layer<maxLayers && !placed; layer++){
+        const z = layer*p.height; if(z+p.height>H) break;
+        let y=0; while(y+l<=W && !placed){
+          let x=0; while(x+w<=L && !placed){
+            if(isSpaceFree(out,x,y,z,w,l,p.height) && canPlaceWithLikeStack(out,x,y,z,w,l,p.name,allowed)){
+              out.push(new PackedCase(x,y,z,w,l,p.height, layer+1, rot===0?'normal':'rotated', p.name, rot, p, false));
+              load.packedCount += 1; placed=true; break;
+            }
+            x += stepX;
+          }
+          y += stepY;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// Auto grid (single regular type): pick orientation + rotated remainder
+function _packMainAndRotatedLogic(L,W,caseLen,caseWid,numCases,maxStack,staggered,orientName){
+  const rowsAlongLen = Math.floor(L / caseWid);
+  let perRow = Math.floor(W / caseLen);
+  const positions = [];
+  for(let row=0; row<rowsAlongLen; row++){
+    const offset = (staggered && (row%2===1)) ? (caseLen/2) : 0;
+    let nCols = perRow;
+    if(staggered && offset>0 && (W - perRow*caseLen) < (caseLen/2)){
+      nCols = Math.max(0, perRow-1);
+    }
+    for(let col=0; col<nCols; col++){
+      const x = row*caseWid;
+      const y = offset + col*caseLen;
+      if(x+caseWid<=L && y+caseLen<=W) positions.push([x,y]);
+    }
+  }
+  const out=[]; let placed=0;
+  for(let layer=0; layer<maxStack; layer++){
+    for(const [x,y] of positions){ if(placed>=numCases) break; out.push([x,y,layer+1,'main']); placed++; }
+    if(placed>=numCases) break;
+  }
+  // rotated remainder on leftover length strip
+  const remaining = numCases - placed;
+  const leftOverLen = L - (rowsAlongLen*caseWid);
+  if(remaining>0 && leftOverLen >= caseLen){
+    const rotatedPerRow = Math.floor(W / caseWid);
+    const rotatedRows = Math.floor(leftOverLen / caseLen);
+    const rotX0 = rowsAlongLen * caseWid;
+    const rotW = caseLen, rotL = caseWid;
+    for(let layer=0; layer<maxStack && placed<numCases; layer++){
+      let placedRot=0;
+      for(let rr=0; rr<rotatedRows && placed<numCases; rr++){
+        for(let rc=0; rc<rotatedPerRow && placed<numCases; rc++){
+          const x = rotX0 + rr*rotW, y = rc*rotL;
+          if(x+rotW<=L && y+rotL<=W){ out.push([x,y,layer+1,'rotated']); placed++; placedRot++; }
+        }
+      }
+      while(placed<numCases){
+        const y = (placedRot % rotatedPerRow) * rotL;
+        const x = rotX0 + Math.floor(placedRot / rotatedPerRow) * rotW;
+        if(x+rotW>L || y+rotL>W) break;
+        out.push([x,y,layer+1,'rotated']); placed++; placedRot++;
+      }
+    }
+  }
+  const methodName = orientName==='side1-across-width' ? `Side 1 (${caseLen}") across width` : `Side 2 (${caseLen}") across width`;
+  return {tuples:out, methodName};
+}
+function autoGridPack(L,W,H,userStackMax){
+  const regular = caseLoads.filter(l=>!l.profile.freestack);
+  if(regular.length!==1){ debugLog('Auto Grid: multiple regular case types detected; falling back to Grid.'); return simpleGridPack(L,W,H,userStackMax); }
+  const load = regular[0]; const p=load.profile; const s1=p.side1, s2=p.side2, h=p.height; const q=load.quantity;
+  const maxStack = allowedStackFor(p,H,userStackMax);
+  const candidates=[];
+  for(const [mainLen,mainWid,orientName] of [[s1,s2,'side1-across-width'],[s2,s1,'side2-across-width']]){
+    for(const staggered of [false,true]){
+      const {tuples, methodName} = _packMainAndRotatedLogic(L,W,mainLen,mainWid,q,maxStack,staggered,orientName);
+      const rotatedCount = tuples.filter(t=> t[3]==='rotated').length;
+      const score = [tuples.length, rotatedCount, orientName==='side1-across-width'?1:0, !staggered?1:0];
+      candidates.push({score, tuples, methodName, mainLen, mainWid, orientName, staggered});
+    }
+  }
+  if(!candidates.length) return [];
+  candidates.sort((a,b)=> (b.score[0]-a.score[0]) || (b.score[1]-a.score[1]) || (b.score[2]-a.score[2]) || (b.score[3]-a.score[3]));
+  const best = candidates[0];
+  const arr=[]; let placed=0;
+  for(const [x,y,layer,tag] of best.tuples){
+    if(placed>=q) break;
+    let w,l,rot; if(tag==='main'){ w=best.mainWid; l=best.mainLen; rot=0; } else { w=best.mainLen; l=best.mainWid; rot=90; }
+    arr.push(new PackedCase(x,y,(layer-1)*h,w,l,h,layer, rot===0?'normal':'rotated', p.name, rot, p, false));
+    placed++;
+  }
+  const rotatedAny = arr.some(c=>c.rotation===90); const modeText = best.staggered? 'Staggered':'Grid';
+  debugLog(`Auto Grid selected: ${best.methodName} | ${modeText} | Rotated remainder used: ${rotatedAny} | ${placed}/${q} cases | Individual MaxStack=${p.maxStack}`);
+  load.packedCount = Math.min(q, placed);
+  return arr;
+}
+
+// Edge fill pass: try to tuck leftover regulars at edges (z=0) while honoring like-case stacks
+function edgeFillPass(arr,L,W,H,userStackMax){
+  // Build remaining loads list
+  const remaining=[];
+  for(const load of caseLoads){ if(!load.profile.freestack){ const rem = Math.max(0, load.quantity - load.packedCount); for(let i=0;i<rem;i++) remaining.push(load); } }
+  if(!remaining.length) return arr;
+
+  function tryPlace(load,x,y,w,l,rot){
+    const p=load.profile; const allowed = allowedStackFor(p,H,userStackMax);
+    if(x+w<=L && y+l<=W && p.height<=H && isSpaceFree(arr,x,y,0,w,l,p.height) && canPlaceWithLikeStack(arr,x,y,0,w,l,p.name,allowed)){
+      arr.push(new PackedCase(x,y,0,w,l,p.height,1, rot===0?'normal':'rotated', p.name, rot, p, false)); load.packedCount += 1; return true;
+    }
+    return false;
+  }
+
+  for(const load of remaining){
+    const p=load.profile; let placed=false;
+    for(const [w,l,rot] of [[p.side1,p.side2,0],[p.side2,p.side1,90]]){
+      // Right edge sweep
+      let x = L - w; let y = 0;
+      while(y + l <= W && !placed){ placed = tryPlace(load,x,y,w,l,rot); y += Math.max(4, Math.min(w,l)/2); }
+      // Bottom edge sweep
+      if(!placed){ let y0 = W - l; let x0 = 0; while(x0 + w <= L && !placed){ placed = tryPlace(load,x0,y0,w,l,rot); x0 += Math.max(4, Math.min(w,l)/2); } }
+      if(placed) break;
+    }
+  }
+  return arr;
+}
+
+// ===== Visualization (same UI as before) =====
+function setupCanvas(){ const c=document.getElementById('visualizationCanvas'); const parent=c.parentElement; function resize(){ const r=parent.getBoundingClientRect(); c.width=Math.max(900, r.width-20); c.height=Math.max(560, r.height-20); updateVisualization(); } window.addEventListener('resize', resize); setTimeout(resize,120); }
+function clearCanvas(){ const c=document.getElementById('visualizationCanvas'); const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); }
+function updateVisualization(){ if(!currentPacking.length){ clearCanvas(); const c=document.getElementById('visualizationCanvas'); const ctx=c.getContext('2d'); ctx.fillStyle='#64748b'; ctx.font='16px Arial'; ctx.textAlign='center'; ctx.fillText('No packing to display', c.width/2, c.height/2); document.getElementById('canvasInfo').textContent='No packing to display'; return; }
+  const view=document.querySelector('input[name="view"]:checked').value; const L=+document.getElementById('truckLength').value; const W=+document.getElementById('truckWidth').value; const H=+document.getElementById('truckHeight').value; if(view==='3d'){ draw3DView(L,W,H); } else { draw2DView(view,L,W,H, +document.getElementById('zoomSlider').value); } }
+function draw2DView(view,L,W,H,zoom){ const c=document.getElementById('visualizationCanvas'); const ctx=c.getContext('2d'); clearCanvas(); let dw,dh; if(view==='top'){ dw=L; dh=W; } else if(view==='side'){ dw=L; dh=H; } else { dw=W; dh=H; }
+  const sx=(c.width-2*canvasPadding)/dw, sy=(c.height-2*canvasPadding)/dh; scale=Math.min(sx,sy)*zoom;
+  ctx.strokeStyle='#ef4444'; ctx.lineWidth=2; ctx.strokeRect(canvasPadding,canvasPadding,dw*scale,dh*scale);
+  ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1; const grid=50; for(let x=0;x<=dw;x+=grid){ ctx.beginPath(); ctx.moveTo(canvasPadding+x*scale, canvasPadding); ctx.lineTo(canvasPadding+x*scale,canvasPadding+dh*scale); ctx.stroke(); } for(let y=0;y<=dh;y+=grid){ ctx.beginPath(); ctx.moveTo(canvasPadding, canvasPadding+y*scale); ctx.lineTo(canvasPadding+dw*scale, canvasPadding+y*scale); ctx.stroke(); }
+  currentPacking.forEach((pc,i)=> drawCase2D(ctx,pc,i,view,H));
+  ctx.fillStyle='#111827'; ctx.font='bold 14px Arial'; ctx.textAlign='center'; const reg=currentPacking.filter(ca=>!ca.isFreestack).length; const fre=currentPacking.length-reg; ctx.fillText(`${view.toUpperCase()} • ${currentPacking.length} cases${fre?` (${reg} reg, ${fre} free)`:''}`, c.width/2, 20);
+  const requested = caseLoads.reduce((s,l)=>s+l.quantity,0); document.getElementById('canvasInfo').textContent=`${view.toUpperCase()} | Zoom ${zoom}× | Loaded ${currentPacking.length}/${requested}`; }
+function drawCase2D(ctx,pc,index,view,H,offX,offY){ let x,y,w,h; if(view==='top'){ x=canvasPadding+pc.x*scale; y=canvasPadding+pc.y*scale; w=pc.width*scale; h=pc.length*scale; } else if(view==='side'){ x=canvasPadding+pc.x*scale; y=canvasPadding+(H-pc.z-pc.height)*scale; w=pc.width*scale; h=pc.height*scale; } else { x=canvasPadding+pc.y*scale; y=canvasPadding+(H-pc.z-pc.height)*scale; w=pc.length*scale; h=pc.height*scale; }
+  let color = pc.caseProfile? pc.caseProfile.color : '#3498db'; if(pc.rotation===90) color='#f39c12'; ctx.fillStyle=color; ctx.fillRect(x,y,w,h); ctx.setLineDash(pc.isFreestack?[5,4]:[]); ctx.lineWidth= pc.isFreestack? 2:1; ctx.strokeStyle='#0f172a'; ctx.strokeRect(x,y,w,h); ctx.setLineDash([]); if(w>24&&h>16){ ctx.fillStyle='#fff'; ctx.font='bold 10px Arial'; ctx.textAlign='center'; ctx.fillText((index+1).toString(), x+w/2, y+h/2+3); }}
+function draw3DView(L,W,H){
+  const c=document.getElementById('visualizationCanvas'); const ctx=c.getContext('2d'); clearCanvas();
+  const az=+document.getElementById('azimuthSlider').value*Math.PI/180; const el=+document.getElementById('elevationSlider').value*Math.PI/180; const zoom=+document.getElementById('zoomSlider').value;
+  function project(x,y,z,s){ const cosA=Math.cos(az), sinA=Math.sin(az), cosE=Math.cos(el), sinE=Math.sin(el); const X=cosA*x + sinA*y; const Y=-sinA*cosE*x + cosA*cosE*y - sinE*z; return {x:c.width/2 + X*s*zoom, y:c.height/2 + Y*s*zoom}; }
+  // Fit truck bbox
+  const corners=[[0,0,0],[L,0,0],[0,W,0],[L,W,0],[0,0,H],[L,0,H],[0,W,H],[L,W,H]];
+  let proj=corners.map(v=>project(v[0],v[1],v[2],1)); let minX=Math.min(...proj.map(p=>p.x)), maxX=Math.max(...proj.map(p=>p.x)), minY=Math.min(...proj.map(p=>p.y)), maxY=Math.max(...proj.map(p=>p.y)); let sx=(c.width-2*canvasPadding)/(maxX-minX||1), sy=(c.height-2*canvasPadding)/(maxY-minY||1); const s = Math.min(sx,sy,2)*0.85; scale=s;
+  // Draw truck wireframe
+  const edges=[[0,1],[1,3],[3,2],[2,0],[4,5],[5,7],[7,6],[6,4],[0,4],[1,5],[2,6],[3,7]]; ctx.strokeStyle='#ef4444'; ctx.lineWidth=2; ctx.lineJoin='miter';
+  edges.forEach(e=>{ const a=project(...corners[e[0]],s), b=project(...corners[e[1]],s); ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); });
+  // Painter across faces
+  const camDir = {x: Math.cos(az), y: Math.sin(az), z: Math.sin(-el)};
+  function faceDepth(verts){ const cx=(verts[0][0]+verts[1][0]+verts[2][0]+verts[3][0])/4; const cy=(verts[0][1]+verts[1][1]+verts[2][1]+verts[3][1])/4; const cz=(verts[0][2]+verts[1][2]+verts[2][2]+verts[3][2])/4; return cx*camDir.x + cy*camDir.y - cz*Math.abs(camDir.z); }
+  function shade(hex,f){ const n=parseInt(hex.slice(1),16); let r=Math.floor(((n>>16)&255)*f), g=Math.floor(((n>>8)&255)*f), b=Math.floor((n&255)*f); r=Math.max(0,Math.min(255,r)); g=Math.max(0,Math.min(255,g)); b=Math.max(0,Math.min(255,b)); return `#${((r<<16)|(g<<8)|b).toString(16).padStart(6,'0')}`; }
+  // Gather all faces from all boxes
+  const allFaces=[];
+  for(const pc of currentPacking){
+    const x=pc.x, y=pc.y, z=pc.z, w=pc.width, l=pc.length, h=pc.height;
+    const V=[[x,y,z],[x+w,y,z],[x+w,y+l,z],[x,y+l,z],[x,y,z+h],[x+w,y,z+h],[x+w,y+l,z+h],[x,y+l,z+h]];
+    // 6 faces with consistent winding
+    const facesIdx=[
+      {idx:[4,5,6,7], kind:'top',    shade:1.10},
+      {idx:[0,1,2,3], kind:'bottom', shade:0.60},
+      {idx:[0,3,7,4], kind:'left',   shade:0.85},
+      {idx:[1,2,6,5], kind:'right',  shade:0.95},
+      {idx:[0,1,5,4], kind:'front',  shade:0.90},
+      {idx:[2,3,7,6], kind:'back',   shade:0.75},
+    ];
+    let base = pc.caseProfile ? pc.caseProfile.color : '#3498db';
+    if(pc.rotation===90) base = '#f39c12';
+    for(const f of facesIdx){
+      const verts3 = f.idx.map(i=>V[i]);
+      const depth = faceDepth(verts3);
+      const verts2 = verts3.map(p=> project(p[0],p[1],p[2],s));
+      allFaces.push({
+        verts2, depth, color: shade(base, f.shade),
+        stroke: pc.isFreestack ? 'purple' : '#0f172a',
+        isFreestack: pc.isFreestack
+      });
+    }
+  }
+  // Sort back-to-front and draw
+  allFaces.sort((a,b)=> a.depth - b.depth);
+  ctx.lineJoin = 'miter';
+  for(const f of allFaces){
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.moveTo(f.verts2[0].x, f.verts2[0].y);
+    ctx.lineTo(f.verts2[1].x, f.verts2[1].y);
+    ctx.lineTo(f.verts2[2].x, f.verts2[2].y);
+    ctx.lineTo(f.verts2[3].x, f.verts2[3].y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = f.stroke;
+    ctx.lineWidth = f.isFreestack ? 2 : 1;
+    ctx.stroke();
+  }
+  // Title & status
+  ctx.fillStyle='#111827'; ctx.font='bold 14px Arial'; ctx.textAlign='center';
+  const reg=currentPacking.filter(ca=>!ca.isFreestack).length; const fre=currentPacking.length-reg;
+  ctx.fillText(`3D • ${currentPacking.length} cases${fre?` (${reg} reg, ${fre} free)`:''}`, c.width/2, 20);
+  const req=caseLoads.reduce((s,l)=>s+l.quantity,0); document.getElementById('canvasInfo').textContent = `3D | Zoom ${zoom}× | Az ${Math.round(az*180/Math.PI)}° | El ${Math.round(el*180/Math.PI)}° | Loaded ${currentPacking.length}/${req}`;
+}
+
+function update3DView(){ if(document.querySelector('input[name="view"]:checked').value==='3d') updateVisualization(); }
+function resetZoom(){ const z=document.getElementById('zoomSlider'); z.value=1.0; document.getElementById('zoomValue').textContent='1.0x'; updateVisualization(); }
+
+// ===== Stats / Export =====
+function updateStatistics(){ const el=document.getElementById('statisticsContent'); if(!currentPacking.length){ el.textContent='No data'; return; }
+  const L=+document.getElementById('truckLength').value, W=+document.getElementById('truckWidth').value, H=+document.getElementById('truckHeight').value; const truckVol=L*W*H; const req=caseLoads.reduce((s,l)=>s+l.quantity,0); const tot=currentPacking.length; let packedVol=0, weight=0; currentPacking.forEach(c=>{ packedVol += c.width*c.length*c.height; if(c.caseProfile) weight += c.caseProfile.weight; }); const util=truckVol? (packedVol/truckVol*100):0; const byType={}; currentPacking.forEach(c=>{ byType[c.caseType]=(byType[c.caseType]||0)+1; });
+  const lines=['PACKING STATISTICS','==========================================','',`Truck: ${document.getElementById('truckProfile').value}`,`Dims: ${L}L × ${W}W × ${H}H`,`Volume: ${truckVol.toLocaleString()} in³`,'','SUMMARY','------------------------------------------',`Requested: ${req} cases`,`Packed:    ${tot} cases (${req? (tot/req*100).toFixed(1):'0.0'}%)`,'',`Utilization: ${util.toFixed(1)}%`,`Used Volume: ${packedVol.toLocaleString()} in³`,`Empty Vol.: ${(truckVol-packedVol).toLocaleString()} in³`,`Total Weight: ${weight.toLocaleString()} lbs`,'','Per Type:',...Object.entries(byType).map(([k,v])=>`  - ${k}: ${v}`)];
+  el.textContent = lines.join('\\n');
+}
+function exportReport(){ updateStatistics(); const txt=document.getElementById('statisticsContent').textContent; const blob=new Blob([txt],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='truck_packing_report.txt'; a.click(); URL.revokeObjectURL(a.href); debugLog('Report exported'); }
+function exportVisualization(){ const c=document.getElementById('visualizationCanvas'); const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='truck_visualization.png'; a.click(); debugLog('PNG exported'); }
+function exportDebugLog(){ const txt=document.getElementById('debugLog').textContent; const blob=new Blob([txt],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='truck_debug_log.txt'; a.click(); URL.revokeObjectURL(a.href); debugLog('Log exported'); }
+function clearDebugLog(){ document.getElementById('debugLog').textContent=''; }
+function clearAll(){ currentPacking=[]; caseLoads=[]; updateCaseList(); updateVisualization(); clearDebugLog(); debugLog('Cleared all data'); }
+function open3DViewer(){ document.querySelector('input[name="view"][value="3d"]').checked=true; document.getElementById('3dControls').style.display='inline-block'; updateVisualization(); debugLog('3D viewer'); }
+
+// ===== Tabs =====
+function switchTab(name){ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.style.display='none'); document.querySelector(`.tab[onclick="switchTab('${name}')"]`).classList.add('active'); document.getElementById(name+'Tab').style.display='block'; if(name==='visualization'){ updateVisualization(); } else if(name==='statistics'){ renderStatisticsCard(); }}
+
+// ===== Modal CRUD (minimal) =====
+let modalHandler=null;
+function showModal(title,html,onSave){ const m=document.createElement('div'); m.className='modal'; m.id='modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);display:block;z-index:1000'; m.innerHTML=`<div style="width:min(520px,92vw);max-height:86vh;overflow:auto;background:#fff;margin:6vh auto;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.2)"><div style="padding:12px 14px;border-bottom:1px solid #e5e7eb;font-weight:700">${title}</div><div id="modalBody" style="padding:12px 14px">${html}</div><div style="display:flex;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid #e5e7eb"><button class="btn secondary" id="cancelBtn">Cancel</button><button class="btn primary" id="saveBtn">Save</button></div></div>`; document.body.appendChild(m); document.getElementById('cancelBtn').onclick=()=>m.remove(); document.getElementById('saveBtn').onclick=()=>{ onSave&&onSave(); m.remove(); }; }
+function newTruckDialog(){ const html=`<div class='row'><label>Name</label><input id='t_name'></div><div class='row'><label>Length</label><input id='t_len' type='number'></div><div class='row'><label>Width</label><input id='t_wid' type='number'></div><div class='row'><label>Height</label><input id='t_hei' type='number'></div><div class='row'><label>Max Weight</label><input id='t_wgt' type='number'></div>`; showModal('New Truck',html,()=>{ const name=document.getElementById('t_name').value.trim(); const L=+document.getElementById('t_len').value, W=+document.getElementById('t_wid').value, H=+document.getElementById('t_hei').value, MW=+document.getElementById('t_wgt').value||0; if(!name||!(L>0&&W>0&&H>0)) return alert('Fill all fields'); truckProfiles.push(new TruckProfile(name,L,W,H,MW)); saveProfiles(); populateProfileDropdowns(); debugLog('Truck added: '+name); }); }
+function editTruckDialog(){ const sel=document.getElementById('truckProfile').value; const t=truckProfiles.find(v=>v.name===sel); if(!t) return alert('Pick a truck'); const html=`<div class='row'><label>Name</label><input id='t_name' value='${t.name}'></div><div class='row'><label>Length</label><input id='t_len' type='number' value='${t.length}'></div><div class='row'><label>Width</label><input id='t_wid' type='number' value='${t.width}'></div><div class='row'><label>Height</label><input id='t_hei' type='number' value='${t.height}'></div><div class='row'><label>Max Weight</label><input id='t_wgt' type='number' value='${t.maxWeight||0}'></div>`; showModal('Edit Truck',html,()=>{ const L=+document.getElementById('t_len').value, W=+document.getElementById('t_wid').value, H=+document.getElementById('t_hei').value, MW=+document.getElementById('t_wgt').value||0; if(!(L>0&&W>0&&H>0)) return alert('Fill all fields'); Object.assign(t,{length:L,width:W,height:H,maxWeight:MW}); saveProfiles(); populateProfileDropdowns(); document.getElementById('truckProfile').value=t.name; fillTruckDimensions(); debugLog('Truck updated: '+t.name); }); }
+function deleteTruckProfile(){ const sel=document.getElementById('truckProfile').value; if(!sel) return; if(!confirm(`Delete truck profile "${sel}"?`)) return; const i=truckProfiles.findIndex(v=>v.name===sel); if(i>=0){ truckProfiles.splice(i,1); saveProfiles(); populateProfileDropdowns(); debugLog('Truck deleted: '+sel); } }
+function colorChipsHTML(sel){ const colors=[...defaultColors,'#60a5fa','#34d399','#f472b6','#fb7185','#facc15','#a78bfa','#14b8a6','#64748b']; return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${colors.map(c=>`<div class="sw" data-color="${c}" style="width:28px;height:28px;border:2px solid #e5e7eb;border-radius:6px;cursor:pointer;background:${c};${c===sel?'box-shadow:0 0 0 2px rgba(37,99,235,.25)':''}"></div>`).join('')}</div>`; }
+function hookColorGrid(containerId,inputId){ const grid=document.querySelector(`#${containerId} .sw`).parentElement; grid.querySelectorAll('.sw').forEach(el=>{ el.onclick=()=>{ grid.querySelectorAll('.sw').forEach(n=>n.style.boxShadow=''); el.style.boxShadow='0 0 0 2px rgba(37,99,235,.25)'; document.getElementById(inputId).value = el.dataset.color; }; }); }
+function newCaseDialog(){ const html=`<div class='row'><label>Name</label><input id='c_name'></div><div class='row'><label>Side 1 (L)</label><input id='c_s1' type='number'></div><div class='row'><label>Side 2 (W)</label><input id='c_s2' type='number'></div><div class='row'><label>Height</label><input id='c_h' type='number'></div><div class='row'><label>Weight</label><input id='c_w' type='number'></div><div class='row'><label>Max Stack</label><input id='c_ms' type='number' value='2'></div><div class='row'><label><input id='c_fs' type='checkbox'> Freestack</label></div><div class='row'><label>Color</label><input id='c_color' value='#3498db'>${colorChipsHTML('#3498db')}</div>`; showModal('New Case',html,()=>{ const name=document.getElementById('c_name').value.trim(); const s1=+document.getElementById('c_s1').value, s2=+document.getElementById('c_s2').value, h=+document.getElementById('c_h').value; const w=+document.getElementById('c_w').value||0; const ms=+document.getElementById('c_ms').value||1; const fs=document.getElementById('c_fs').checked; const color=document.getElementById('c_color').value||'#3498db'; if(!name||!(s1>0&&s2>0&&h>0)) return alert('Fill all fields'); caseProfiles.push(new CaseProfile(name,s1,s2,h,w,false,fs,ms,color)); saveProfiles(); populateProfileDropdowns(); document.getElementById('caseProfile').value=name; updateCaseInfo(); debugLog('Case added: '+name); }); setTimeout(()=>hookColorGrid('modalBody','c_color'),0); }
+function editCaseDialog(){ const sel=document.getElementById('caseProfile').value; const p=caseProfiles.find(v=>v.name===sel); if(!p) return alert('Pick a case'); const html=`<div class='row'><label>Name</label><input id='c_name' value='${p.name}' disabled></div><div class='row'><label>Side 1 (L)</label><input id='c_s1' type='number' value='${p.side1}'></div><div class='row'><label>Side 2 (W)</label><input id='c_s2' type='number' value='${p.side2}'></div><div class='row'><label>Height</label><input id='c_h' type='number' value='${p.height}'></div><div class='row'><label>Weight</label><input id='c_w' type='number' value='${p.weight||0}'></div><div class='row'><label>Max Stack</label><input id='c_ms' type='number' value='${p.maxStack||1}'></div><div class='row'><label><input id='c_fs' type='checkbox' ${p.freestack?'checked':''}> Freestack</label></div><div class='row'><label>Color</label><input id='c_color' value='${p.color||'#3498db'}'>${colorChipsHTML(p.color||'#3498db')}</div>`; showModal('Edit Case',html,()=>{ const s1=+document.getElementById('c_s1').value, s2=+document.getElementById('c_s2').value, h=+document.getElementById('c_h').value; const w=+document.getElementById('c_w').value||0; const ms=+document.getElementById('c_ms').value||1; const fs=document.getElementById('c_fs').checked; const color=document.getElementById('c_color').value||'#3498db'; if(!(s1>0&&s2>0&&h>0)) return alert('Fill all fields'); Object.assign(p,{side1:s1,side2:s2,height:h,weight:w,maxStack:ms,freestack:fs,color}); saveProfiles(); populateProfileDropdowns(); document.getElementById('caseProfile').value=p.name; updateCaseInfo(); debugLog('Case updated: '+p.name); }); setTimeout(()=>hookColorGrid('modalBody','c_color'),0); }
+function deleteCaseProfile(){ const sel=document.getElementById('caseProfile').value; if(!sel) return; if(!confirm(`Delete case profile "${sel}"?`)) return; const i=caseProfiles.findIndex(v=>v.name===sel); if(i>=0){ caseProfiles.splice(i,1); saveProfiles(); populateProfileDropdowns(); debugLog('Case deleted: '+sel); } }
+
+// ===== Init =====
+function initApp(){ debugLog('Truck Loader (JS port) ready'); loadProfiles(); createDefaultProfiles(); populateProfileDropdowns(); document.getElementById('truckProfile').addEventListener('change', fillTruckDimensions); document.getElementById('caseProfile').addEventListener('change', updateCaseInfo); document.querySelectorAll('input[name="view"]').forEach(r=> r.addEventListener('change',(e)=>{ document.getElementById('3dControls').style.display = e.target.value==='3d' ? 'inline-block' : 'none'; updateVisualization(); })); setupCanvas(); debugLog(`Loaded ${truckProfiles.length} truck profiles`); debugLog(`Loaded ${caseProfiles.length} case profiles`); debugLog("TIP: 'Auto-Grid' for dense single-type; 'Smart' uses frontier; 'Grid' scans with step size."); }
+window.addEventListener('load', initApp);
+
+// animation loop for free camera
+(function loop(){ const engine=document.querySelector('input[name="engine3d"]:checked')?.value||'canvas'; const view=document.querySelector('input[name="view"]:checked')?.value||'top'; if(engine==='webgl' && view==='3d'){ renderWebGL(); } requestAnimationFrame(loop); })();
+
+// === Pretty Statistics Card (non-destructive to existing updateStatistics) ===
+function renderStatisticsCard(){
+  const container=document.getElementById('statisticsContent');
+  if(!currentPacking.length){
+    container.innerHTML = '<div class="stats-card"><div class="stats-title">PACKING STATISTICS</div><div class="smallnote">Pack the truck to see statistics.</div></div>';
+    window.__statsText = 'No data'; return;
+  }
+  const L=+document.getElementById('truckLength').value, W=+document.getElementById('truckWidth').value, H=+document.getElementById('truckHeight').value;
+  const truckVol=L*W*H;
+  const req = caseLoads.reduce((s,l)=>s+l.quantity,0);
+  const tot = currentPacking.length;
+  let packedVol=0, weight=0;
+  currentPacking.forEach(c=>{ packedVol += c.width*c.length*c.height; if(c.caseProfile) weight += c.caseProfile.weight; });
+  const util = truckVol? (packedVol/truckVol*100):0;
+  const success = req? (tot/req*100) : 0;
+
+  const byType = new Map();
+  for(const load of caseLoads){
+    byType.set(load.profile.name, {profile:load.profile, requested:load.quantity, packed:0});
+  }
+  for(const c of currentPacking){
+    const v = byType.get(c.caseType) || {profile:c.caseProfile, requested:0, packed:0};
+    v.packed += 1; byType.set(c.caseType, v);
+  }
+  const rows = [];
+  byType.forEach((v,name)=>{
+    const p=v.profile;
+    const pct = v.requested? Math.round(v.packed/v.requested*100) : 0;
+    const tag = p.freestack ? '[F]' : '[R]';
+    const dims = `${(+p.side1).toFixed(1)}×${(+p.side2).toFixed(1)}×${(+p.height).toFixed(1)}"`;
+    rows.push(`<div class="case-row"><div><b>${tag}</b> ${name} <span class="dim">(Stk:${p.maxStack})</span><div class="dim">${dims}</div></div><div><b>${v.packed}/${v.requested}</b> (${pct}%)</div></div>`);
+  });
+
+  const left = `
+    <div class="stats-block">
+      <h4>OVERALL SUMMARY</h4>
+      <div class="kv"><span>Success Rate:</span><b>${success.toFixed(1)}% (${tot}/${req})</b></div>
+      <div class="kv"><span>Space Utilization:</span><b>${util.toFixed(1)}%</b></div>
+      <div class="kv"><span>Total Weight:</span><b>${weight.toFixed(1)} lbs</b></div>
+      <div class="smallnote">Truck Volume: ${truckVol.toLocaleString()} in³ • Used: ${packedVol.toLocaleString()} in³</div>
+    </div>`;
+
+  const right = `
+    <div class="stats-block">
+      <h4>BY CASE TYPE</h4>
+      ${rows.join('') || '<div class="dim">No cases</div>'}
+    </div>`;
+
+  container.innerHTML = `
+    <div class="stats-card">
+      <div class="stats-top"><div>Length: ${L.toFixed(1)} in</div><div><b>Loaded: ${tot} / ${req} cases</b></div></div>
+      <div class="stats-title">PACKING STATISTICS</div>
+      <div class="stats-grid">${left}${right}</div>
+    </div>`;
+
+  // Plain-text string for Export TXT
+  window.__statsText = [
+    'PACKING STATISTICS',
+    '==========================================',
+    '',
+    `Truck: ${document.getElementById('truckProfile').value}`,
+    `Dims: ${L}L × ${W}W × ${H}H`,
+    `Volume: ${truckVol.toLocaleString()} in³`,
+    '',
+    'SUMMARY',
+    '------------------------------------------',
+    `Requested: ${req} cases`,
+    `Packed:    ${tot} cases (${req? (tot/req*100).toFixed(1):'0.0'}%)`,
+    `Utilization: ${util.toFixed(1)}%`,
+    `Used Volume: ${packedVol.toLocaleString()} in³`,
+    `Empty Vol.: ${(truckVol-packedVol).toLocaleString()} in³`,
+    `Total Weight: ${weight.toFixed(1)} lbs`,
+    '',
+    'Per Type:',
+    ...Array.from(byType.entries()).map(([name,v])=>`  - ${name}: ${v.packed}/${v.requested} (${v.requested? (v.packed/v.requested*100).toFixed(1):'0.0'}%)`)
+  ].join('\\n');
+}
+
+function printStatsCard(){
+  renderStatisticsCard();
+  const html = document.getElementById('statisticsContent').innerHTML;
+  const styles = Array.from(document.querySelectorAll('style')).map(s=>s.outerHTML).join('');
+  const w = window.open('', 'print_stats');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Packing Statistics</title>${styles}</head><body>${html}</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{ w.print(); w.close(); }, 250);
+}
+function exportStatsText(){
+  renderStatisticsCard();
+  const txt = window.__statsText || 'No data';
+  const blob=new Blob([txt],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='packing_statistics.txt'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+</script>
+</body>
+</html>
