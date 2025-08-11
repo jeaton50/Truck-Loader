@@ -600,18 +600,37 @@ function loadProfiles(){
 }
 
 function createDefaultProfiles(){
-  if(!truckProfiles.length){ truckProfiles=[
-     new TruckProfile("SPRINTER HIGH TOP",99,68,73,230),
-    new TruckProfile("10’ BOX TRUCK",108,76,73,250),
-    new TruckProfile("12’ BOX TRUCK",144,79,73,290),
-    new TruckProfile("14’ BOX TRUCK",168,86,77,400),
-    new TruckProfile("16’ BOX TRUCK",192,92,79,430),
-    new TruckProfile("20’ BOX TRUCK",235,93,86,570),
-    new TruckProfile("22’ BOX TRUCK",253,93,97,700),
-    new TruckProfile("24’ BOX TRUCK",288,93,97,800),
-    new TruckProfile("26’ BOX TRUCK",301,93,97,900),
-    new TruckProfile("53’ TRAILER",630,100,109,400),
-  ]; }
+  // Change this every time you deploy (date, git hash, etc.)
+  const BUILD_ID = "2025-08-11-01";  
+
+  // Try to load cached data
+  const savedBuild = localStorage.getItem("truckProfilesBuildId");
+  const savedTruck = JSON.parse(localStorage.getItem("truckProfilesRaw") || "null");
+
+  // If build changed or no saved trucks → overwrite with this code's data
+  if (savedBuild !== BUILD_ID || !Array.isArray(savedTruck) || !savedTruck.length) {
+    truckProfiles = [
+      new TruckProfile("SPRINTER HIGH TOP",99,68,73,230),
+      new TruckProfile("10’ BOX TRUCK",108,76,73,250),
+      new TruckProfile("12’ BOX TRUCK",144,79,73,290),
+      new TruckProfile("14’ BOX TRUCK",168,86,77,400),
+      new TruckProfile("16’ BOX TRUCK",192,92,79,430),
+      new TruckProfile("20’ BOX TRUCK",235,93,86,570),
+      new TruckProfile("22’ BOX TRUCK",253,93,97,700),
+      new TruckProfile("24’ BOX TRUCK",288,93,97,800),
+      new TruckProfile("26’ BOX TRUCK",301,93,97,900),
+      new TruckProfile("53’ TRAILER",630,100,109,400),
+    ];
+
+    // Save plain data & version
+    localStorage.setItem("truckProfilesRaw", JSON.stringify(truckProfiles.map(p => ({
+      name: p.name, L: p.length, W: p.width, H: p.height, maxWeight: p.maxWeight
+    }))));
+    localStorage.setItem("truckProfilesBuildId", BUILD_ID);
+  } else {
+    // Rehydrate from saved
+    truckProfiles = savedTruck.map(p => new TruckProfile(p.name, p.L, p.W, p.H, p.maxWeight));
+  }
 
   // Always recreate case profiles to ensure they have proper product types
   caseProfiles = [
