@@ -103,9 +103,10 @@
           <select id="productType" onchange="filterCaseProfiles()">
             <option value="">-- Select Product --</option>
             <option value="Absen">Absen</option>
-            <option value="Posters">Posters</option>
-            <option value="Theatrixx">Theatrixx</option>
 			<option value="ROE">ROE</option>
+			<option value="Theatrixx">Theatrixx</option>
+			<option value="Processors">Processors</option>
+			<option value="Posters">Posters</option>
           </select>
         </div>
         <div class="row">
@@ -635,7 +636,17 @@ function createDefaultProfiles(){
     new CaseProfile("Case, ROE Black Pearl Outriggers",51.0,30.0,23.0,128.0,false,false,2,"#3498db","ROE"),
     new CaseProfile("Case, ROE Black Pearl version1, 8x (BP2)",46.0,24.0,32.0,295.0,false,false,2,"#3498db","ROE"),
     new CaseProfile("Case, ROE Black Pearl version2, 8x (BP2V2) ",46.0,24.0,32.0,336.0,false,false,2,"#3498db","ROE"),
-    
+	
+	new CaseProfile("Brompton S8 processor",21.0,32.0,18.0,91,false,false,2,"#3498db","Processors"),
+	new CaseProfile("Brompton Tessera SX40 with XD10",21.0,32.0,18.0,106,false,false,2,"#3498db","Processors"),
+	new CaseProfile("Brompton Tessera XD10 Stand Alone",10.0,13.0,20.0,28,false,false,2,"#3498db","Processors"),
+	new CaseProfile("Novastar MX40PRO processor",22.0,32.0,16.0,73,false,false,2,"#3498db","Processors"),
+	new CaseProfile("Novastar MCTRL 4K LED processor",20.0,24.0,9.0,26,false,false,2,"#3498db","Processors"),
+	new CaseProfile("Novastar MCTRL 660 LED processor",20.0,24.0,9.0,26,false,false,2,"#3498db","Processors"),
+	new CaseProfile("Novastar MCTRL R5 LED processor",18.0,23.0,9.0,30,false,false,2,"#3498db","Processors"),
+
+
+  
     // Posters cases
     new CaseProfile("Case, TRT poster, 2x",79.5,15.25,28.25,294.0,false,false,2,"#9b59b6","Posters"),
     new CaseProfile("Case, TRT poster base, 2x",22.75,30.0,19.5,110.0,false,false,2,"#1abc9c","Posters"),
@@ -1701,5 +1712,6 @@ if (!window.__truckDropdownFixApplied) {
 </script>
 
 </body>
+</html>
 </html>
 
