@@ -64,12 +64,20 @@
       <div class="hd">🚛 Truck Configuration</div>
       <div class="bd">
         <div class="row">
+          <div class="group">
+  <button class="btn secondary" onclick="newTruckDialog()">New</button>
+  <button class="btn secondary" onclick="editTruckDialog()">Edit</button>
+  <button class="btn danger" onclick="deleteTruckProfile()">Del</button>
+</div>
+        </div>
+
+        <div class="row">
           <label>Profile</label>
           <select id="truckProfile"></select>
           <div class="group">
-            <button class="btn secondary" onclick="newTruckDialog()">New</button>
-            <button class="btn secondary" onclick="editTruckDialog()">Edit</button>
-            <button class="btn danger" onclick="deleteTruckProfile()">Del</button>
+            
+            
+            
           </div>
         </div>
         <div class="row"><label>Length (in)</label><input type="number" id="truckLength" min="0" step="1"></div>
@@ -82,12 +90,20 @@
       <div class="hd">📦 Case Configuration</div>
       <div class="bd">
         <div class="row">
+          <div class="group">
+  <button class="btn secondary" onclick="newCaseDialog()">New</button>
+  <button class="btn secondary" onclick="editCaseDialog()">Edit</button>
+  <button class="btn danger" onclick="deleteCaseProfile()">Del</button>
+</div>
+        </div>
+
+        <div class="row">
           <label>Case Type</label>
           <select id="caseProfile"></select>
           <div class="group">
-            <button class="btn secondary" onclick="newCaseDialog()">New</button>
-            <button class="btn secondary" onclick="editCaseDialog()">Edit</button>
-            <button class="btn danger" onclick="deleteCaseProfile()">Del</button>
+            
+            
+            
           </div>
         </div>
         <div id="freestackInfo" style="font-size:11px;color:#2563eb;margin-bottom:8px"></div>
@@ -1249,3 +1265,4 @@ function exportStatsText(){
 </script>
 </body>
 </html>
+
