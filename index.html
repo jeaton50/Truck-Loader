@@ -139,18 +139,23 @@
     </div>
 
     <div class="section">
-      <div class="hd">⚙️ Options</div>
-      <div class="bd">
-        <div class="row">
-          <div>
-            <label style="margin-right:6px">Algorithm</label>
-			<label><input type="radio" name="algorithm" value="smart"> Smart</label>
-			<label style="margin-left:10px"><input type="radio" name="algorithm" value="grid"> Grid</label>
-			<label style="margin-left:10px"><input type="radio" name="algorithm" value="auto_grid" checked> Auto-Grid</label>
-          </div>
-        </div>
+  <div class="hd">⚙️ Options</div>
+  <div class="bd">
+    <div class="row">
+      <div>
+        <label style="margin-right:6px">Algorithm</label>
+        <label><input type="radio" name="algorithm" value="smart"> Smart</label>
+        <label style="margin-left:10px"><input type="radio" name="algorithm" value="grid"> Grid</label>
+        <label style="margin-left:10px"><input type="radio" name="algorithm" value="auto_grid" checked> Auto-Grid</label>
       </div>
     </div>
+    <!-- ADD THIS NEW ROW: -->
+    <div class="row">
+      <label><input type="checkbox" id="forceMaxStack" checked> Force Max Stack</label>
+      <div style="font-size:11px;color:#64748b;margin-top:4px">(Stack cases to their maximum height before spreading horizontally)</div>
+    </div>
+  </div>
+</div>
 
     <div class="section">
       <div class="hd">🚀 Actions</div>
@@ -245,7 +250,7 @@ function loadProfiles(){
 
 function createDefaultProfiles(){
   // Change this every time you deploy (date, git hash, etc.)
-  const BUILD_ID = "2025-08-11-03";  
+  const BUILD_ID = "2025-08-11-02";  
 
   // Try to load cached data
   const savedBuild = localStorage.getItem("truckProfilesBuildId");
@@ -773,7 +778,109 @@ function smartPack(L,W,H,userStackMax){
 }
 
 // Grid pack: step scanning + stacking constraint
+// 2. Modify the smartPack function to support Force Max Stack:
+
+function smartPack(L,W,H,userStackMax){
+  const forceMaxStack = document.getElementById('forceMaxStack');
+  const useForceMaxStack = forceMaxStack ? forceMaxStack.checked : false;
+  
+  const out=[]; const toPack=[];
+  for(const load of caseLoads){ if(!load.profile.freestack){ for(let i=0;i<load.quantity;i++) toPack.push(load); } }
+  if(!toPack.length) return out;
+  toPack.sort((a,b)=> (b.profile.side1*b.profile.side2*b.profile.height) - (a.profile.side1*a.profile.side2*a.profile.height));
+  
+  // Group by case type for Force Max Stack
+  if(useForceMaxStack){
+    const byType = new Map();
+    for(const load of toPack){
+      const key = load.profile.name;
+      const list = byType.get(key) || [];
+      list.push(load);
+      byType.set(key, list);
+    }
+    
+    // Pack each type together, stacking vertically first
+    for(const [typeName, loads] of byType.entries()){
+      const p = loads[0].profile;
+      const allowed = allowedStackFor(p,H,userStackMax);
+      
+      for(const load of loads){
+        let placed = false;
+        for(const [w,l,rot] of [[p.side1,p.side2,0],[p.side2,p.side1,90]]){
+          if(placed || w>L || l>W || p.height>H) continue;
+          
+          // Try to find existing stacks of same type to add to
+          let bestPos = null;
+          for(const existing of out){
+            if(existing.caseType === p.name && existing.width === w && existing.length === l){
+              const stackHeight = stackCountAt(out, existing.x, existing.y, w, l);
+              if(stackHeight < allowed){
+                const z = existing.z + stackHeight * p.height;
+                if(z + p.height <= H && isSpaceFree(out, existing.x, existing.y, z, w, l, p.height)){
+                  bestPos = [existing.x, existing.y, z];
+                  break;
+                }
+              }
+            }
+          }
+          
+          if(bestPos){
+            const [x,y,z] = bestPos;
+            out.push(new PackedCase(x,y,z,w,l,p.height, Math.floor(z/p.height)+1, rot===0?'normal':'rotated', p.name, rot, p, false));
+            load.packedCount += 1;
+            placed = true;
+          } else {
+            // Find new position
+            for(let x=0; x+w<=L && !placed; x+=Math.max(4,w/4)){
+              for(let y=0; y+l<=W && !placed; y+=Math.max(4,l/4)){
+                if(isSpaceFree(out,x,y,0,w,l,p.height)){
+                  out.push(new PackedCase(x,y,0,w,l,p.height,1,rot===0?'normal':'rotated',p.name,rot,p,false));
+                  load.packedCount += 1;
+                  placed = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return out;
+  }
+  
+  // Original smart pack logic for when Force Max Stack is disabled
+  let positions = [[0,0,0]];
+  const t0 = performance.now();
+  for(const load of toPack){
+    if(performance.now()-t0 > 30000){ debugLog('Timeout in smart pack'); break; }
+    const p=load.profile; const allowed = allowedStackFor(p,H,userStackMax);
+    let best=null;
+    for(const [w,l,rot] of [[p.side1,p.side2,0],[p.side2,p.side1,90]]){
+      if(w>L||l>W||p.height>H) continue;
+      for(const [x,y,z] of positions){
+        if(x+w<=L && y+l<=W && z+p.height<=H){
+          if(isSpaceFree(out,x,y,z,w,l,p.height) && canPlaceWithLikeStack(out,x,y,z,w,l,p.name,allowed)){ best=[x,y,z,w,l,rot]; break; }
+        }
+      }
+      if(best) break;
+    }
+    if(best){
+      const [x,y,z,w,l,rot]=best;
+      out.push(new PackedCase(x,y,z,w,l,p.height, (p.height>0? Math.floor(z/p.height)+1:1), rot===0?'normal':'rotated', p.name, rot, p, false));
+      load.packedCount += 1;
+      for(const pos of [[x+w,y,z],[x,y+l,z],[x,y,z+p.height]]){
+        const [px,py,pz]=pos; if(px<L && py<W && pz<H && !positions.some(q=> q[0]===px && q[1]===py && q[2]===pz)) positions.push(pos);
+      }
+      positions = positions.filter(v=> !(v[0]===x && v[1]===y && v[2]===z)).sort((a,b)=> a[2]-b[2] || a[1]-b[1] || a[0]-b[0]);
+      if(positions.length>2000) positions = positions.slice(0,2000);
+    }
+  }
+  return out;
+}
+
 function simpleGridPack(L,W,H,userStackMax){
+  const forceMaxStack = document.getElementById('forceMaxStack');
+  const useForceMaxStack = forceMaxStack ? forceMaxStack.checked : false;
+  
   const out=[]; const toPack=[];
   for(const load of caseLoads){ if(!load.profile.freestack){ for(let i=0;i<load.quantity;i++) toPack.push(load); } }
   if(!toPack.length) return out;
@@ -782,25 +889,51 @@ function simpleGridPack(L,W,H,userStackMax){
   const minL = Math.min(...caseLoads.filter(l=>!l.profile.freestack).map(l=>l.profile.side2));
   const stepX = Math.max(4, minW/2), stepY = Math.max(4, minL/2);
   const t0 = performance.now();
+  
   for(const load of toPack){
     if(performance.now()-t0 > 30000){ debugLog('Timeout in grid pack'); break; }
     const p=load.profile; const allowed = allowedStackFor(p,H,userStackMax);
     if(p.side1>L || p.side2>W || p.height>H) continue;
     let placed=false;
+    
     for(const [w,l,rot] of [[p.side1,p.side2,0],[p.side2,p.side1,90]]){
       if(placed) break; if(w>L||l>W) continue;
-      const maxLayers = allowed;
-      for(let layer=0; layer<maxLayers && !placed; layer++){
-        const z = layer*p.height; if(z+p.height>H) break;
-        let y=0; while(y+l<=W && !placed){
-          let x=0; while(x+w<=L && !placed){
-            if(isSpaceFree(out,x,y,z,w,l,p.height) && canPlaceWithLikeStack(out,x,y,z,w,l,p.name,allowed)){
-              out.push(new PackedCase(x,y,z,w,l,p.height, layer+1, rot===0?'normal':'rotated', p.name, rot, p, false));
-              load.packedCount += 1; placed=true; break;
+      
+      if(useForceMaxStack){
+        // Force Max Stack: try to stack vertically first
+        const maxLayers = allowed;
+        let y=0; 
+        while(y+l<=W && !placed){
+          let x=0; 
+          while(x+w<=L && !placed){
+            // Try to stack at this XY position first
+            for(let layer=0; layer<maxLayers && !placed; layer++){
+              const z = layer*p.height; 
+              if(z+p.height>H) break;
+              if(isSpaceFree(out,x,y,z,w,l,p.height) && canPlaceWithLikeStack(out,x,y,z,w,l,p.name,allowed)){
+                out.push(new PackedCase(x,y,z,w,l,p.height, layer+1, rot===0?'normal':'rotated', p.name, rot, p, false));
+                load.packedCount += 1; placed=true; break;
+              }
             }
             x += stepX;
           }
           y += stepY;
+        }
+      } else {
+        // Original logic: spread horizontally first
+        const maxLayers = allowed;
+        for(let layer=0; layer<maxLayers && !placed; layer++){
+          const z = layer*p.height; if(z+p.height>H) break;
+          let y=0; while(y+l<=W && !placed){
+            let x=0; while(x+w<=L && !placed){
+              if(isSpaceFree(out,x,y,z,w,l,p.height) && canPlaceWithLikeStack(out,x,y,z,w,l,p.name,allowed)){
+                out.push(new PackedCase(x,y,z,w,l,p.height, layer+1, rot===0?'normal':'rotated', p.name, rot, p, false));
+                load.packedCount += 1; placed=true; break;
+              }
+              x += stepX;
+            }
+            y += stepY;
+          }
         }
       }
     }
@@ -809,22 +942,72 @@ function simpleGridPack(L,W,H,userStackMax){
 }
 
 // Auto grid (single regular type): pick orientation + rotated remainder
+// Auto grid (single regular type): pick orientation + rotated remainder
 function _packMainAndRotatedLogic(L,W,caseLen,caseWid,numCases,maxStack,staggered,orientName){
+  const forceMaxStack = document.getElementById('forceMaxStack').checked;
+  
   const rowsAlongLen = Math.floor(L / caseWid);
   let perRow = Math.floor(W / caseLen);
   const positions = [];
-  for(let row=0; row<rowsAlongLen; row++){
-    const offset = (staggered && (row%2===1)) ? (caseLen/2) : 0;
-    let nCols = perRow;
-    if(staggered && offset>0 && (W - perRow*caseLen) < (caseLen/2)){
-      nCols = Math.max(0, perRow-1);
+  
+  // If Force Max Stack is enabled, prioritize vertical stacking
+  if(forceMaxStack){
+    // Calculate how many XY positions we actually need
+    const totalPositionsNeeded = Math.ceil(numCases / maxStack);
+    const maxPossiblePositions = rowsAlongLen * perRow;
+    
+    // If we can fit all cases by stacking, use fewer XY positions
+    if(totalPositionsNeeded <= maxPossiblePositions){
+      // Calculate reduced grid to force stacking
+      const reducedPositions = Math.min(totalPositionsNeeded, maxPossiblePositions);
+      let positionsAdded = 0;
+      
+      for(let row=0; row<rowsAlongLen && positionsAdded < reducedPositions; row++){
+        const offset = (staggered && (row%2===1)) ? (caseLen/2) : 0;
+        let nCols = perRow;
+        if(staggered && offset>0 && (W - perRow*caseLen) < (caseLen/2)){
+          nCols = Math.max(0, perRow-1);
+        }
+        for(let col=0; col<nCols && positionsAdded < reducedPositions; col++){
+          const x = row*caseWid;
+          const y = offset + col*caseLen;
+          if(x+caseWid<=L && y+caseLen<=W){
+            positions.push([x,y]);
+            positionsAdded++;
+          }
+        }
+      }
+    } else {
+      // Need all available positions
+      for(let row=0; row<rowsAlongLen; row++){
+        const offset = (staggered && (row%2===1)) ? (caseLen/2) : 0;
+        let nCols = perRow;
+        if(staggered && offset>0 && (W - perRow*caseLen) < (caseLen/2)){
+          nCols = Math.max(0, perRow-1);
+        }
+        for(let col=0; col<nCols; col++){
+          const x = row*caseWid;
+          const y = offset + col*caseLen;
+          if(x+caseWid<=L && y+caseLen<=W) positions.push([x,y]);
+        }
+      }
     }
-    for(let col=0; col<nCols; col++){
-      const x = row*caseWid;
-      const y = offset + col*caseLen;
-      if(x+caseWid<=L && y+caseLen<=W) positions.push([x,y]);
+  } else {
+    // Original logic - spread horizontally first
+    for(let row=0; row<rowsAlongLen; row++){
+      const offset = (staggered && (row%2===1)) ? (caseLen/2) : 0;
+      let nCols = perRow;
+      if(staggered && offset>0 && (W - perRow*caseLen) < (caseLen/2)){
+        nCols = Math.max(0, perRow-1);
+      }
+      for(let col=0; col<nCols; col++){
+        const x = row*caseWid;
+        const y = offset + col*caseLen;
+        if(x+caseWid<=L && y+caseLen<=W) positions.push([x,y]);
+      }
     }
   }
+  
   const out=[]; let placed=0;
   for(let layer=0; layer<maxStack; layer++){
     for(const [x,y] of positions){ if(placed>=numCases) break; out.push([x,y,layer+1,'main']); placed++; }
@@ -857,6 +1040,7 @@ function _packMainAndRotatedLogic(L,W,caseLen,caseWid,numCases,maxStack,staggere
   const methodName = orientName==='side1-across-width' ? `Side 1 (${caseLen}") across width` : `Side 2 (${caseLen}") across width`;
   return {tuples:out, methodName};
 }
+
 function autoGridPack(L,W,H,userStackMax){
   const regular = caseLoads.filter(l=>!l.profile.freestack);
   if(regular.length!==1){ debugLog('Auto Grid: multiple regular case types detected; falling back to Grid.'); return simpleGridPack(L,W,H,userStackMax); }
@@ -959,14 +1143,74 @@ function draw2DView(view,L,W,H,zoom){
   currentPacking.forEach((pc,i)=> drawCase2D(ctx,pc,i,view,H));
   
   ctx.fillStyle='#111827'; 
-  ctx.font='bold 14px Arial'; 
-  ctx.textAlign='center'; 
-  const reg=currentPacking.filter(ca=>!ca.isFreestack).length; 
-  const fre=currentPacking.length-reg; 
-  ctx.fillText(`${view.toUpperCase()} • ${currentPacking.length} cases${fre?` (${reg} reg, ${fre} free)`:''}`, c.width/2, 20);
-  
-  const requested = caseLoads.reduce((s,l)=>s+l.quantity,0); 
-  document.getElementById('canvasInfo').textContent=`${view.toUpperCase()} | Zoom ${zoom}× | Loaded ${currentPacking.length}/${requested}`; 
+ctx.textAlign='center'; 
+const reg=currentPacking.filter(ca=>!ca.isFreestack).length; 
+const fre=currentPacking.length-reg; 
+
+// Calculate statistics for canvas display
+// Replace the statistics section you just added with this expanded version:
+
+// Calculate statistics for canvas display
+let packedVol = 0, weight = 0;
+currentPacking.forEach(c=>{ 
+  packedVol += c.width*c.length*c.height; 
+  if(c.caseProfile) weight += c.caseProfile.weight; 
+});
+const truckVol = L*W*H;
+const util = truckVol ? (packedVol/truckVol*100) : 0;
+const req = caseLoads.reduce((s,l)=>s+l.quantity,0);
+const successRate = req ? (currentPacking.length/req*100) : 0;
+
+// Calculate case type breakdown
+const byType = new Map();
+for(const load of caseLoads){
+  byType.set(load.profile.name, {requested: load.quantity, packed: 0});
+}
+for(const c of currentPacking){
+  const existing = byType.get(c.caseType) || {requested: 0, packed: 0};
+  existing.packed += 1;
+  byType.set(c.caseType, existing);
+}
+
+// Draw title at bottom
+ctx.font='bold 14px Arial';
+ctx.fillStyle='#111827';
+ctx.fillText(`${view.toUpperCase()} • ${currentPacking.length} cases${fre?` (${reg} reg, ${fre} free)`:''}`, c.width/2, c.height - 90);
+
+// Draw statistics
+ctx.font='12px Arial';
+ctx.fillStyle='#475569';
+ctx.fillText(`Success Rate: ${successRate.toFixed(1)}% • Space Utilization: ${util.toFixed(1)}% • Weight: ${weight.toFixed(0)} lbs`, c.width/2, c.height - 70);
+
+// Draw truck info
+ctx.fillStyle='#64748b';
+ctx.font='11px Arial';
+const truckName = document.getElementById('truckProfile').value;
+ctx.fillText(`${truckName} (${L}L × ${W}W × ${H}H)`, c.width/2, c.height - 50);
+
+// Draw case type breakdown
+ctx.fillStyle='#374151';
+ctx.font='10px Arial';
+let yPos = c.height - 30;
+const maxTypesToShow = 4; // Limit to prevent overcrowding
+let typeCount = 0;
+
+for(const [typeName, counts] of byType.entries()){
+  if(typeCount >= maxTypesToShow) break;
+  if(counts.packed > 0){ // Only show types that were actually packed
+    const pct = counts.requested > 0 ? Math.round(counts.packed/counts.requested*100) : 0;
+    const shortName = typeName.length > 25 ? typeName.substring(0, 25) + '...' : typeName;
+    ctx.fillText(`${shortName}: ${counts.packed}/${counts.requested} (${pct}%)`, c.width/2, yPos);
+    yPos += 12;
+    typeCount++;
+  }
+}
+
+// If there are more types, show a summary
+const remainingTypes = Array.from(byType.entries()).filter(([name, counts]) => counts.packed > 0).length - maxTypesToShow;
+if(remainingTypes > 0){
+  ctx.fillText(`...and ${remainingTypes} more case type${remainingTypes > 1 ? 's' : ''}`, c.width/2, yPos);
+}
 }
 
 function drawCase2D(ctx,pc,index,view,H){ 
